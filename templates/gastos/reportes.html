@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Gestión de Gastos / Reportes
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Reportes de Gastos</h2>
+    </div>
+    <div class="card-body">
+        <div class="row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+            <div class="card">
+                <div class="card-body">
+                    <h4>Resumen de Gastos</h4>
+                    <p>Reporte consolidado de gastos</p>
+                    <button class="btn btn-primary">Generar Reporte</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

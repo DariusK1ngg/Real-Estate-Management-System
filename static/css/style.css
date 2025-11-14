@@ -1,0 +1,8 @@
+html, body { height: 100%; margin: 0; }
+.topbar { height: 56px; display:flex; align-items:center; gap:12px; padding:0 14px; border-bottom:1px solid #eee; font-family: system-ui, sans-serif; }
+#map { height: calc(100vh - 56px); }
+.select-wrap { display:flex; align-items:center; gap:8px; }
+select { padding:6px 8px; border:1px solid #ddd; border-radius:8px; }
+.legend { background:#fff; padding:8px 10px; border:1px solid #ddd; border-radius:6px; line-height:18px; font-size:14px; }
+.legend .row { display:flex; align-items:center; gap:8px; margin:4px 0; }
+.legend .sw { width:12px; height:12px; border-radius:3px; display:inline-block; }

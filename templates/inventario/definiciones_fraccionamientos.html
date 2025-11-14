@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Gestión de Inventario / Definiciones / Fraccionamientos
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Consulta de Fraccionamientos</h2>
+        <div class="card-tools">
+            <input type="text" id="search-fraccionamiento" class="form-control" placeholder="Buscar por nombre...">
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Nombre del Fraccionamiento</th>
+                        <th>Descripción</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-fraccionamientos">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/inventario.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,117 @@
+/* =================================
+   ESTILOS PARA GASTOS (General)
+   Reutiliza .form-container-ventas y .table-container-ventas de ventas.css
+   ================================= */
+
+/* --- Estilos para Pestañas (Tabs) --- */
+
+.tabs-container {
+    width: 100%;
+    margin-top: 20px;
+}
+
+.tab-links {
+    display: flex;
+    border-bottom: 2px solid #ccc;
+    margin-bottom: 20px;
+}
+
+.tab-link {
+    padding: 10px 20px;
+    cursor: pointer;
+    border: none;
+    background-color: #f1f1f1;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    font-size: 1rem;
+    font-weight: 500;
+    margin-right: 5px;
+    position: relative;
+    top: 2px; /* Alinea con el borde inferior */
+}
+
+.tab-link.active {
+    background-color: #fff;
+    border: 2px solid #ccc;
+    border-bottom: 2px solid #fff; /* Oculta el borde inferior */
+    font-weight: 600;
+    color: var(--primary-color, #007bff);
+}
+
+.tab-link:not(.active):hover {
+    background-color: #e0e0e0;
+}
+
+.tab-content {
+    display: none; /* Oculto por defecto */
+    padding: 10px;
+    animation: fadeIn 0.5s;
+}
+
+.tab-content.active {
+    display: block; /* Visible cuando está activo */
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+
+/* --- Estilos para Tablas y Acciones --- */
+
+/* Reutilizo la mayoría de ventas.css, pero añado botones de acción si no existen */
+#tabla-categorias-gasto .actions,
+#tabla-proveedores .actions,
+#tabla-gastos .actions {
+    text-align: center;
+}
+
+.btn-edit {
+    padding: 5px 10px;
+    background-color: var(--warning-color, #ffc107);
+    color: #212529;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 5px;
+    font-size: 0.85rem;
+}
+
+.btn-delete {
+    padding: 5px 10px;
+    background-color: var(--danger-color, #dc3545);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.btn-edit:hover {
+    background-color: #e0a800;
+}
+
+.btn-delete:hover {
+    background-color: #c82333;
+}
+
+/* Estilo para el badge de estado */
+.badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    text-transform: capitalize;
+}
+.estado-pendiente {
+    background-color: #ffc107; /* Amarillo */
+    color: #333;
+}
+.estado-pagado {
+    background-color: #28a745; /* Verde */
+}
+.estado-anulado {
+    background-color: #dc3545; /* Rojo */
+}

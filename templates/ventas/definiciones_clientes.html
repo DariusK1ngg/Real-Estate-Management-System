@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Gestión de Ventas / Definiciones / Clientes
+{% endblock %}
+
+{% block content %}
+<div id="modalCliente" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modal-title">Nuevo Cliente</h3>
+            <span class="close" onclick="cerrarModal('modalCliente')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="formCliente">
+                <input type="hidden" id="cliente-id" name="id">
+                
+                <div class="form-group">
+                    <label>Tipo Documento</label>
+                    <select name="tipo_documento_id" id="selectTipoDoc" class="form-control" required>
+                        <option value="">Cargando...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>N° Documento</label>
+                    <input type="text" name="documento" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Nombre(s)</label>
+                    <input type="text" name="nombre" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Apellido(s)</label>
+                    <input type="text" name="apellido" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Profesión</label>
+                    <select name="profesion_id" id="selectProfesion" class="form-control">
+                        <option value="">-- Seleccione --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Tipo de Cliente</label>
+                    <select name="tipo_cliente_id" id="selectTipoCliente" class="form-control">
+                        <option value="">-- Seleccione --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Teléfono</label>
+                    <input type="text" name="telefono" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label>Ciudad</label>
+                    <select name="ciudad_id" id="selectCiudad" class="form-control">
+                        <option value="">-- Seleccione Ciudad --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Barrio</label>
+                    <select name="barrio_id" id="selectBarrio" class="form-control" disabled>
+                        <option value="">-- Primero seleccione Ciudad --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Dirección (Calle, N° de casa)</label>
+                    <textarea name="direccion" class="form-control" rows="2"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Estado</label>
+                    <select name="estado" class="form-control">
+                        <option value="activo">Activo</option>
+                        <option value="inactivo">Inactivo</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalCliente')">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="guardarCliente()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Gestión de Clientes</h2>
+        <button class="btn btn-success" onclick="abrirModalNuevo()">+ Nuevo Cliente</button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Nombre Completo</th>
+                        <th>Documento</th>
+                        <th>Teléfono</th>
+                        <th>Email</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaClientes">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/clientes.js') }}"></script>
+{% endblock %}
