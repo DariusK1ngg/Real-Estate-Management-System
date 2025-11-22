@@ -39,6 +39,15 @@ def api_registrar_pago():
     forma_id = int(data.get("forma_pago_id"))
     monto = Decimal(str(data["monto"]))
     
+    # --- CORRECCIÓN: Sanitizar cuenta_bancaria_id ---
+    # Si viene vacío (string vacío), lo convertimos a None (NULL en base de datos)
+    cuenta_bancaria_id = data.get("cuenta_bancaria_id")
+    if not cuenta_bancaria_id:
+        cuenta_bancaria_id = None
+    else:
+        cuenta_bancaria_id = int(cuenta_bancaria_id)
+    # -----------------------------------------------
+
     caja = None
     if forma_id == 1: # Efectivo
         caja_id = session.get("caja_id")
@@ -47,25 +56,53 @@ def api_registrar_pago():
         if not caja or not caja.abierta: return jsonify({"error": "Caja cerrada"}), 403
 
     cuota = Cuota.query.get(int(data["cuota_id"]))
-    if not cuota or cuota.estado == 'pagada': return jsonify({"error": "Cuota inválida"}), 400
+    if not cuota or cuota.estado == 'pagada': return jsonify({"error": "Cuota inválida o ya pagada"}), 400
     
     pago = Pago(
-        contrato_id=cuota.contrato_id, cuota_id=cuota.id, fecha_pago=datetime.strptime(data["fecha_pago"], "%Y-%m-%d"),
-        monto=monto, forma_pago_id=forma_id, referencia=data.get("referencia"), observaciones=data.get("observaciones"),
-        usuario_id=current_user.id, cuenta_bancaria_id=data.get("cuenta_bancaria_id")
+        contrato_id=cuota.contrato_id, 
+        cuota_id=cuota.id, 
+        fecha_pago=datetime.strptime(data["fecha_pago"], "%Y-%m-%d"),
+        monto=monto, 
+        forma_pago_id=forma_id, 
+        referencia=data.get("referencia"), 
+        observaciones=data.get("observaciones"),
+        usuario_id=current_user.id, 
+        cuenta_bancaria_id=cuenta_bancaria_id # Usamos la variable saneada
     )
     db.session.add(pago)
     
-    cuota.estado = 'pagada'; cuota.fecha_pago = pago.fecha_pago; cuota.valor_pagado = monto
+    cuota.estado = 'pagada'
+    cuota.fecha_pago = pago.fecha_pago
+    cuota.valor_pagado = monto
     
+    # Lógica de movimiento de dinero
     if forma_id == 1 and caja:
-        mov = MovimientoCaja(caja_id=caja.id, tipo_movimiento="ingreso", monto=monto, concepto=f"Cobro cuota {cuota.numero_cuota}", fecha_hora=datetime.now(), pago_id=pago.id, usuario_id=current_user.id)
-        db.session.add(mov); caja.saldo_actual = (caja.saldo_actual or 0) + monto
-    elif data.get("cuenta_bancaria_id"):
-        cta = CuentaBancaria.query.get(data["cuenta_bancaria_id"])
+        mov = MovimientoCaja(
+            caja_id=caja.id, 
+            tipo_movimiento="ingreso", 
+            monto=monto, 
+            concepto=f"Cobro cuota {cuota.numero_cuota}", 
+            fecha_hora=datetime.now(), 
+            pago_id=pago.id, 
+            usuario_id=current_user.id
+        )
+        db.session.add(mov)
+        caja.saldo_actual = (caja.saldo_actual or 0) + monto
+        
+    elif cuenta_bancaria_id:
+        cta = CuentaBancaria.query.get(cuenta_bancaria_id)
         if cta:
-            dep = DepositoBancario(cuenta_id=cta.id, fecha_deposito=pago.fecha_pago, monto=monto, referencia="Cobro Auto", concepto="Cobro Cuota", estado='confirmado', usuario_id=current_user.id)
-            db.session.add(dep); cta.saldo = (cta.saldo or 0) + monto
+            dep = DepositoBancario(
+                cuenta_id=cta.id, 
+                fecha_deposito=pago.fecha_pago, 
+                monto=monto, 
+                referencia="Cobro Auto", 
+                concepto="Cobro Cuota", 
+                estado='confirmado', 
+                usuario_id=current_user.id
+            )
+            db.session.add(dep)
+            cta.saldo = (cta.saldo or 0) + monto
 
     db.session.commit()
     return jsonify({"ok": True, "message": "Pago registrado", "pago_id": pago.id})

@@ -248,11 +248,23 @@ async function registrarPago() {
             body: JSON.stringify(data)
         });
         const result = await response.json();
+        
         if (response.ok) {
-            alert(result.message);
+            // 1. Cerrar el modal primero
             modalPago.hide();
+            
+            // 2. Mensaje de éxito
+            // alert(result.message); // Opcional: puedes quitarlo si el PDF ya es suficiente confirmación
+            
+            // 3. ABRIR EL RECIBO PDF AUTOMÁTICAMENTE
+            if (result.pago_id) {
+                window.open(`/admin/cobros/recibo/${result.pago_id}`, '_blank');
+            }
+
+            // 4. Actualizar la tabla de cuotas y la caja
             if (clienteSeleccionadoId) cargarCuotasCliente(clienteSeleccionadoId);
             checkCajaEstado();
+            
         } else {
             alert(`Error: ${result.error}`);
         }

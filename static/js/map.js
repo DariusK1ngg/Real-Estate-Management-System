@@ -1,10 +1,12 @@
+// static/js/map.js
+
 // Mapa centrado en la región
 const map = L.map('map').setView([-27.033, -56.133], 10);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
-// Función de estilo por estado
+// Estilos
 function styleByEstado(e) {
   if (e === "disponible") return { color:"#2ECC71", weight:2, fillOpacity:0.25, fillColor:"#2ECC71" };
   if (e === "reservado")  return { color:"#F1C40F", weight:2, fillOpacity:0.25, fillColor:"#F1C40F" };
@@ -24,36 +26,21 @@ legend.onAdd = function () {
 };
 legend.addTo(map);
 
-let fracsLayer = null;
+// Variables globales
 let lotesLayer = null;
+let fracsLayer = null;
+let allFracsData = []; // Guardaremos los datos crudos aquí para buscarlos fácil
 
-// --- FUNCIÓN CENTRAL PARA CREAR POPUPS DE LOTES ---
-function createLotePopup(properties) {
-    let popupContent = `
-        <b>Manzana:</b> ${properties.manzana}<br>
-        <b>Lote:</b> ${properties.numero_lote}<br>
-        <b>Estado:</b> ${properties.estado}<br>
-        <b>Sup:</b> ${properties.metros_cuadrados} m²
-    `;
-
-    const precioContado = properties.precio;
-    if (precioContado) {
-        popupContent += `<br><b>Precio Contado:</b> Gs. ${precioContado.toLocaleString('es-PY')}`;
-    }
-
-    const precioCuota130 = properties.precio_cuota_130;
-    if (precioCuota130) {
-        popupContent += `<br><b>130 Meses:</b> Gs. ${precioCuota130.toLocaleString('es-PY')}`;
-    }
-
-    return popupContent;
-}
-
-// Cargar fraccionamientos en el selector y en el mapa
+// Cargar Fraccionamientos
 fetch('/api/fraccionamientos')
   .then(r => r.json())
   .then(fc => {
+    allFracsData = fc.features; // 1. Guardar datos
+    
     const sel = document.getElementById('sel-frac');
+    // Limpiar opciones previas (excepto la primera)
+    sel.innerHTML = '<option value="">— Selecciona —</option>';
+    
     fc.features.forEach(f => {
       const opt = document.createElement('option');
       opt.value = f.properties.id;
@@ -61,85 +48,80 @@ fetch('/api/fraccionamientos')
       sel.appendChild(opt);
     });
 
+    // Dibujar en el mapa
     fracsLayer = L.geoJSON(fc, {
       style: { color: '#2e7dff', weight: 2, fillOpacity: 0.06 },
-      
-      // ===== LÓGICA AÑADIDA PARA POPUPS DE FRACCIONAMIENTOS =====
       onEachFeature: function (feature, layer) {
-          const properties = feature.properties;
-          if (properties && properties.nombre) {
-              let popupContent = `<strong>${properties.nombre}</strong>`;
-              if (properties.descripcion) {
-                  popupContent += `<br>${properties.descripcion}`;
-              }
-              layer.bindPopup(popupContent);
+          const p = feature.properties;
+          if (p && p.nombre) {
+              layer.bindPopup(`<strong>${p.nombre}</strong><br>${p.descripcion || ''}`);
           }
       }
-      // ===== FIN DE LA LÓGICA AÑADIDA =====
-
     }).addTo(map);
 
-    try {
-      map.fitBounds(fracsLayer.getBounds(), {padding:[20,20]});
-    } catch(e){}
+    // Ajustar vista inicial si hay datos
+    if (fc.features.length > 0) {
+        try { map.fitBounds(fracsLayer.getBounds(), {padding:[20,20]}); } catch(e){}
+    }
   })
-  .catch(err => {
-    console.error("Error cargando fraccionamientos:", err);
-  });
+  .catch(console.error);
 
-// Función central para cargar y mostrar los lotes en el mapa
+// Función para cargar lotes
 function cargarLotes(url) {
     fetch(url)
       .then(r => r.json())
       .then(fc => {
-        if (lotesLayer) {
-          map.removeLayer(lotesLayer);
-        }
+        if (lotesLayer) map.removeLayer(lotesLayer);
 
         lotesLayer = L.geoJSON(fc, {
           style: feat => styleByEstado(feat.properties.estado),
           onEachFeature: (f, l) => {
-            l.bindPopup(createLotePopup(f.properties));
-            l.on('mouseover', function(){ this.setStyle({ weight: 3 }); });
-            l.on('mouseout', function(){ this.setStyle({ weight: 2 }); });
+            // Popup detallado
+            let content = `
+                <b>Manzana:</b> ${f.properties.manzana}<br>
+                <b>Lote:</b> ${f.properties.numero_lote}<br>
+                <b>Estado:</b> ${f.properties.estado}<br>
+                <b>Sup:</b> ${f.properties.metros_cuadrados} m²`;
+            
+            if (f.properties.precio) {
+                content += `<br><b>Precio:</b> Gs. ${f.properties.precio.toLocaleString('es-PY')}`;
+            }
+            l.bindPopup(content);
+            
+            l.on('mouseover', function(){ this.setStyle({ weight: 3, fillOpacity: 0.4 }); });
+            l.on('mouseout', function(){ this.setStyle({ weight: 2, fillOpacity: 0.25 }); });
           }
         }).addTo(map);
-
-        try {
-          if(fc.features.length > 0) {
-            map.fitBounds(lotesLayer.getBounds(), {padding:[20,20]});
-          }
-        } catch(e){}
       })
-      .catch(err => {
-        console.error("Error cargando lotes:", err);
-      });
+      .catch(console.error);
 }
 
-// Carga inicial de todos los lotes
+// Carga inicial
 cargarLotes('/api/lotes');
 
-// Evento para cuando se cambia la selección de fraccionamiento
+// EVENTO DE CAMBIO (Aquí estaba el problema)
 document.getElementById('sel-frac').addEventListener('change', e => {
   const fid = e.target.value;
 
   if (!fid) {
-    // Si se deselecciona, mostrar todos los lotes de nuevo
     cargarLotes('/api/lotes');
-    if (fracsLayer) {
-        try { map.fitBounds(fracsLayer.getBounds(), {padding:[20,20]}); } catch(e) {}
-    }
+    if (fracsLayer) map.fitBounds(fracsLayer.getBounds());
     return;
   }
 
-  // Centrar en el fraccionamiento seleccionado
-  const fraccionamientoSeleccionado = fracsLayer.getLayers().find(layer => String(layer.feature.properties.id) === String(fid));
-  if (fraccionamientoSeleccionado) {
+  // 2. Buscar en los datos crudos (Más robusto que buscar en capas)
+  const featureEncontrado = allFracsData.find(f => String(f.properties.id) === String(fid));
+
+  if (featureEncontrado) {
+      // Crear una capa temporal solo para calcular los bordes (bounds)
+      const tempLayer = L.geoJSON(featureEncontrado);
       try {
-          map.fitBounds(fraccionamientoSeleccionado.getBounds(), { padding: [20, 20] });
-      } catch (e) { }
+          map.fitBounds(tempLayer.getBounds(), { padding: [50, 50] });
+      } catch (error) {
+          console.log("Error al hacer zoom:", error);
+      }
   }
 
-  // Cargar solo los lotes del fraccionamiento seleccionado
+  // Cargar lotes filtrados
   cargarLotes(`/api/fraccionamientos/${fid}/lotes`);
 });

@@ -211,7 +211,20 @@ class Cuota(db.Model):
     estado = db.Column(Enum("pendiente", "pagada", "vencida", name="estado_cuota_enum"), nullable=False, default="pendiente")
     observaciones = db.Column(db.Text, nullable=True)
     pagos = db.relationship("Pago", backref="cuota", lazy=True, cascade="all, delete-orphan")
-    def to_dict(self): return {"id": self.id, "contrato_id": self.contrato_id, "numero_cuota": self.numero_cuota, "fecha_vencimiento": self.fecha_vencimiento.isoformat() if self.fecha_vencimiento else None, "valor_cuota": float(self.valor_cuota), "fecha_pago": self.fecha_pago.isoformat() if self.fecha_pago else None, "valor_pagado": float(self.valor_pagado), "estado": self.estado, "observaciones": self.observaciones, "dias_vencimiento": (self.fecha_vencimiento - date.today()).days if self.fecha_vencimiento else None}
+    def to_dict(self): 
+        return {
+            "id": self.id, 
+            "contrato_id": self.contrato_id, 
+            "numero_contrato": self.contrato.numero_contrato if self.contrato else "N/A",
+            "numero_cuota": self.numero_cuota, 
+            "fecha_vencimiento": self.fecha_vencimiento.isoformat() if self.fecha_vencimiento else None, 
+            "valor_cuota": float(self.valor_cuota), 
+            "fecha_pago": self.fecha_pago.isoformat() if self.fecha_pago else None, 
+            "valor_pagado": float(self.valor_pagado), 
+            "estado": self.estado, 
+            "observaciones": self.observaciones, 
+            "dias_vencimiento": (self.fecha_vencimiento - date.today()).days if self.fecha_vencimiento else None
+        }
 
 class Pago(db.Model):
     __tablename__ = "pagos"
