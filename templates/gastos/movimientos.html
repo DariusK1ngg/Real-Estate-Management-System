@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Movimientos de Gastos{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ventas.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/gastos.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="content-container">
+    <header class="main-header">
+        <h1>Gastos - Carga de Movimientos</h1>
+    </header>
+
+    <div class="form-container-ventas">
+        <form id="form-gasto">
+            <input type="hidden" id="gasto-id" name="id">
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="gasto-proveedor">Proveedor</label>
+                    <select id="gasto-proveedor" name="proveedor_id" class="form-control" required>
+                        <option value="">Seleccione un proveedor...</option>
+                        </select>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="gasto-fecha-factura">Fecha Factura</label>
+                    <input type="date" id="gasto-fecha-factura" name="fecha_factura" class="form-control" required>
+                </div>
+                <div class="form-group col-md-3">
+                    <label for="gasto-numero-factura">N° Factura</label>
+                    <input type="text" id="gasto-numero-factura" name="numero_factura" class="form-control">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="gasto-categoria">Categoría</label>
+                    <select id="gasto-categoria" name="categoria_gasto_id" class="form-control" required>
+                        <option value="">Cargando...</option>
+                        </select>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="gasto-detalle">Detalle (Opcional)</label>
+                    <input type="text" id="gasto-detalle" name="detalle" class="form-control">
+                </div>
+                 <div class="form-group col-md-3">
+                    <label for="gasto-monto">Monto</label>
+                    <input type="text" id="gasto-monto" name="monto" class="form-control" required inputmode="numeric" placeholder="0">
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Registrar Gasto</button>
+                <button type="button" class="btn btn-secondary" id="btn-cancelar-gasto">Cancelar</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="table-container-ventas">
+        <h3 class="mt-4">Gastos Recientes</h3>
+        <table id="tabla-gastos" class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Fecha</th>
+                    <th>Proveedor</th>
+                    <th>Categoría</th>
+                    <th>Detalle</th>
+                    <th>N° Factura</th>
+                    <th>Monto</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<div class="modal fade" id="modalPagarGasto" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Registrar Pago de Gasto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formPagarGasto">
+                <input type="hidden" id="pago_gasto_id">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        Pagando: <strong>Gs. <span id="spanMontoPagar">0</span></strong><br>
+                        Proveedor: <span id="spanProveedorPagar">-</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Fecha de Pago</label>
+                        <input type="date" name="fecha_pago" class="form-control" required id="pago_fecha">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Método de Pago</label>
+                        <select id="selectMetodoPago" name="metodo_pago" class="form-select" required onchange="toggleInfoPago()">
+                            <option value="efectivo">Efectivo (Caja)</option>
+                            <option value="banco">Transferencia / Cheque / Débito</option>
+                        </select>
+                    </div>
+
+                    <div id="divBanco" style="display:none;">
+                        <div class="mb-3">
+                            <label class="form-label">Cuenta Bancaria</label>
+                            <select id="selectCuentaPago" name="cuenta_id" class="form-select">
+                                </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Referencia (N° Comprobante)</label>
+                            <input type="text" name="referencia" class="form-control" placeholder="Ej: 12345678">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Confirmar Pago</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{{ url_for('static', filename='js/gastos.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,46 @@
+/* Estilos para cobros/movimientos.html */
+
+/* Badge de estado de caja */
+#estado-caja.badge {
+    font-size: 1.1rem;
+    padding: 0.5em 0.75em;
+    vertical-align: middle;
+}
+
+#estado-caja.abierta {
+    background-color: #198754; /* Verde */
+    color: white;
+}
+
+#estado-caja.cerrada {
+    background-color: #dc3545; /* Rojo */
+    color: white;
+}
+
+#estado-caja.error {
+    background-color: #ffc107; /* Amarillo */
+    color: black;
+}
+
+/* Panel de búsqueda de clientes */
+#resultados-busqueda .list-group-item {
+    cursor: pointer;
+}
+
+#resultados-busqueda .list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+/* Tabla de Cuotas */
+#tbodyCuotas .badge {
+    font-size: 0.85em;
+}
+
+#tbodyCuotas .badge.bg-danger { /* Vencida */
+    background-color: #dc3545 !important;
+}
+
+#tbodyCuotas .badge.bg-warning { /* Pendiente */
+    background-color: #ffc107 !important;
+    color: #000 !important;
+}

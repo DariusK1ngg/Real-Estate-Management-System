@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Gestión de Ventas / Cargar Nuevo Contrato
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Cargar Nuevo Contrato</h2>
+    </div>
+    <div class="card-body">
+        <form id="formContrato">
+            <div class="grid-container">
+                <div class="form-group">
+                    <label for="numero_contrato">Número de Contrato</label>
+                    <input type="text" id="numero_contrato" name="numero_contrato" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="fecha_contrato">Fecha del Contrato</label>
+                    <input type="date" id="fecha_contrato" name="fecha_contrato" class="form-control" required>
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="cliente_id">Cliente</label>
+                    <select id="cliente_id" name="cliente_id" class="form-control" style="width: 100%;" required></select>
+                </div>
+                 <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="lote_id">Lote</label>
+                    <select id="lote_id" name="lote_id" class="form-control" style="width: 100%;" required>
+                        <option value="">Cargando lotes disponibles...</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="plan_pago_id" class="fw-bold text-primary">Plan de Pago / Financiación</label>
+                    <select id="plan_pago_id" class="form-select">
+                        <option value="">Seleccione primero un lote...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="valor_total">Monto Total del Contrato</label>
+                    <input type="number" step="0.01" id="valor_total" name="valor_total" class="form-control" required>
+                </div>
+                 <div class="form-group">
+                    <label for="cuota_inicial">Cuota Inicial</label>
+                    <input type="number" step="0.01" id="cuota_inicial" name="cuota_inicial" class="form-control" value="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="cantidad_cuotas">Cantidad de Cuotas</label>
+                    <input type="number" id="cantidad_cuotas" name="cantidad_cuotas" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="valor_cuota">Valor de la Cuota</label>
+                    <input type="number" id="valor_cuota" name="valor_cuota" class="form-control" readonly>
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="observaciones">Observaciones</label>
+                    <textarea id="observaciones" name="observaciones" class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <a href="{{ url_for('ventas.ventas_movimientos') }}" class="btn btn-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Guardar Contrato</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="{{ url_for('static', filename='js/contratos.js') }}"></script>
+{% endblock %}

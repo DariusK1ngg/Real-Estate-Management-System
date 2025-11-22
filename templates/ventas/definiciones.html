@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Gestión de Ventas / Definiciones
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Definiciones de Gestión de Ventas</h2>
+    </div>
+    <div class="card-body">
+        <div class="row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+            
+            <div class="card">
+                <div class="card-body">
+                    <h4>Clientes</h4>
+                    <p>Administración de la cartera de clientes de la empresa.</p>
+                    <a href="{{ url_for('ventas.ventas_definiciones_clientes') }}" class="btn btn-primary">Gestionar Clientes</a>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <h4>Condiciones de Venta</h4>
+                    <p>Configuración de planes de pago y financiamiento.</p>
+                    <button class="btn btn-secondary" disabled>Gestionar (Próximamente)</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

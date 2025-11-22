@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Gestión de Cobros / Definiciones
+{% endblock %}
+
+{% block content %}
+<div class="tabs-container">
+    <ul class="nav nav-tabs" id="cobros-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-formas-pago-btn" data-bs-toggle="tab" data-bs-target="#tab-formas-pago" type="button" role="tab">Formas de Pago</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-tipos-cliente-btn" data-bs-toggle="tab" data-bs-target="#tab-tipos-cliente" type="button" role="tab">Tipos de Cliente</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-condiciones-pago-btn" data-bs-toggle="tab" data-bs-target="#tab-condiciones-pago" type="button" role="tab">Condiciones de Pago</button>
+        </li>
+    </ul>
+
+    <div class="tab-content pt-3">
+        <div class="tab-pane fade show active" id="tab-formas-pago" role="tabpanel">
+            <div class="crud-header">
+                <h3>Formas de Pago</h3>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSimpleCobros" data-endpoint="formas-pago" data-title="Nueva Forma de Pago">
+                    <i class="fas fa-plus"></i> Nueva Forma de Pago
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead><tr><th>ID</th><th>Nombre</th><th>Acciones</th></tr></thead>
+                    <tbody id="tbody-formas-pago"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-tipos-cliente" role="tabpanel">
+            <div class="crud-header">
+                <h3>Tipos de Cliente</h3>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSimpleCobros" data-endpoint="tipos-cliente" data-title="Nuevo Tipo de Cliente">
+                    <i class="fas fa-plus"></i> Nuevo Tipo de Cliente
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead><tr><th>ID</th><th>Nombre</th><th>Acciones</th></tr></thead>
+                    <tbody id="tbody-tipos-cliente"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-condiciones-pago" role="tabpanel">
+            <div class="crud-header">
+                <h3>Condiciones de Pago</h3>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSimpleCobros" data-endpoint="condiciones-pago" data-title="Nueva Condición de Pago">
+                    <i class="fas fa-plus"></i> Nueva Condición
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead><tr><th>ID</th><th>Nombre</th><th>Días</th><th>Acciones</th></tr></thead>
+                    <tbody id="tbody-condiciones-pago"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalSimpleCobros" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalSimpleTitleCobros"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formSimpleCobros">
+                    <input type="hidden" name="id" id="simpleIdCobros">
+                    <input type="hidden" id="simpleEndpointCobros">
+                    
+                    <div class="mb-3">
+                        <label for="simpleNombreCobros" class="form-label">Nombre</label>
+                        <input type="text" class="form-control" name="nombre" id="simpleNombreCobros" required>
+                    </div>
+                    
+                    <div class="mb-3" id="campoExtraSimpleCobros" style="display:none;">
+                        <label for="simpleValorCobros" class="form-label" id="labelSimpleValorCobros"></label>
+                        <input type="text" class="form-control" id="simpleValorCobros">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnGuardarSimpleCobros">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/definiciones.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/definiciones_cobros.js') }}"></script>
+{% endblock %}

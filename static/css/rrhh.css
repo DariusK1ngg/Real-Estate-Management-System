@@ -1,0 +1,73 @@
+.modal:not(.fade) {
+    display: none; 
+    position: fixed; 
+    z-index: 1000;
+    left: 0; 
+    top: 0; 
+    width: 100%; 
+    height: 100%;
+    overflow: auto; 
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal:not(.fade) .modal-content {
+    background-color: #fefefe; 
+    margin: 5% auto; 
+    padding: 0;
+    border-radius: 8px; 
+    width: 90%; 
+    max-width: 600px;
+}
+
+.modal:not(.fade) .modal-content.large { 
+    max-width: 800px; 
+}
+
+.modal:not(.fade) .modal-header,
+.modal:not(.fade) .modal-footer,
+.modal:not(.fade) .modal-body { 
+    padding: 20px; 
+}
+
+.modal:not(.fade) .modal-header { 
+    border-bottom: 1px solid #eee; 
+    display: flex; 
+    justify-content: space-between; 
+}
+
+.modal:not(.fade) .modal-footer { 
+    border-top: 1px solid #eee; 
+    display: flex; 
+    justify-content: flex-end; 
+    gap: 10px; 
+}
+
+.modal:not(.fade) .close { 
+    color: #aaa; 
+    font-size: 28px; 
+    font-weight: bold; 
+    cursor: pointer; 
+}
+
+/* Grid para formularios */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.roles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+/* Etiquetas de estado */
+.estado-activo, .estado-inactivo {
+    padding: 4px 8px; 
+    border-radius: 4px; 
+    color: white; 
+    font-size: 0.9em;
+}
+.estado-activo { background-color: #28a745; }
+.estado-inactivo { background-color: #6c757d; }

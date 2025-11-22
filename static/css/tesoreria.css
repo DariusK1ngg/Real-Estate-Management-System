@@ -1,0 +1,77 @@
+/* Contenedor Principal */
+.tabs-container {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* --- Estilos de Pestañas (Tabs) --- */
+.nav-tabs {
+    border-bottom: 2px solid #e9ecef;
+}
+
+.nav-tabs .nav-link {
+    color: #6c757d;
+    font-weight: 500;
+    border: none;
+    padding: 12px 20px;
+    transition: all 0.2s ease-in-out;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px; /* Para que el borde activo pise la línea */
+}
+
+.nav-tabs .nav-link:hover {
+    color: #2e7dff; /* Color primario de tu marca */
+    background-color: rgba(46, 125, 255, 0.05);
+}
+
+.nav-tabs .nav-link.active {
+    color: #2e7dff;
+    background-color: transparent;
+    border-bottom: 2px solid #2e7dff;
+    font-weight: 600;
+}
+
+/* --- Estilos de Tabla --- */
+.table thead th {
+    font-weight: 600;
+    color: #495057;
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(46, 125, 255, 0.03);
+}
+
+/* Columna de Saldo */
+#tbodyCuentas td:nth-last-child(2) { 
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+/* Columna de Acciones */
+.table td button {
+    margin-left: 5px;
+}
+
+/* --- Formulario de Transferencia (en la otra página de tesorería) --- */
+#formTransferencia {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    background-color: #fcfcfc;
+}
+
+/* --- Modales --- */
+/* Asegurar que los modales tengan buen z-index */
+.modal {
+    z-index: 1060;
+}
+.modal-backdrop {
+    z-index: 1050;
+}

@@ -1,0 +1,66 @@
+/* static/css/inventario.css */
+
+.fraccionamiento-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.fraccionamiento-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.lotes-list {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.lote-item {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.lote-item:last-child {
+    border-bottom: none;
+}
+
+.lote-item.selected, .lote-item:hover {
+    background-color: #e9f5ff;
+}
+
+.lote-item-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.lote-item-estado {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    color: white;
+}
+
+.estado-disponible { background-color: #28a745; }
+.estado-reservado { background-color: #ffc107; }
+.estado-vendido { background-color: #dc3545; }
+
+.precio-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    align-items: flex-end;
+}
+
+#precio-unitario {
+    font-weight: bold;
+    color: #0056b3;
+}
