@@ -139,6 +139,8 @@ class Lote(db.Model):
     estado = db.Column(Enum("disponible", "reservado", "vendido", name="estado_enum"), nullable=False, default="disponible")
     geojson = db.Column(db.JSON, nullable=False)
     fraccionamiento_id = db.Column(db.Integer, db.ForeignKey("fraccionamientos.id"), nullable=False)
+    # CAMBIO: Campo activo para Soft Delete
+    activo = db.Column(db.Boolean, default=True, nullable=False)
     fraccionamiento = db.relationship("Fraccionamiento", backref=db.backref("lotes", lazy=True, cascade="all, delete-orphan"))
     contratos = db.relationship("Contrato", backref="lote", lazy=True)
     lista_precios = db.relationship("ListaPrecioLote", backref="lote", lazy=True, cascade="all, delete-orphan")
@@ -176,6 +178,8 @@ class Cliente(db.Model):
     direccion = db.Column(db.Text, nullable=True)
     fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
     estado = db.Column(Enum("activo", "inactivo", name="estado_cliente_enum"), nullable=False, default="activo")
+    # CAMBIO: Campo activo para Soft Delete
+    activo = db.Column(db.Boolean, default=True, nullable=False)
     contratos = db.relationship("Contrato", backref="cliente", lazy=True)
     def to_dict(self): 
         return {"id": self.id, "tipo_documento_id": self.tipo_documento_id, "tipo_documento": self.tipo_documento.nombre if self.tipo_documento else "CI", "documento": self.documento, "nombre": self.nombre, "apellido": self.apellido, "nombre_completo": f"{self.nombre} {self.apellido}", "telefono": self.telefono or "", "email": self.email or "", "direccion": self.direccion or "", "ciudad_id": self.ciudad_id, "ciudad_nombre": self.ciudad.nombre if self.ciudad else "", "barrio_id": self.barrio_id, "barrio_nombre": self.barrio.nombre if self.barrio else "", "profesion_id": self.profesion_id, "tipo_cliente_id": self.tipo_cliente_id, "fecha_registro": self.fecha_registro.isoformat() if self.fecha_registro else None, "estado": self.estado}
@@ -396,3 +400,26 @@ class Cotizacion(db.Model):
     compra = db.Column(db.Numeric(10, 2), nullable=False)
     venta = db.Column(db.Numeric(10, 2), nullable=False)
     def to_dict(self): return {"id": self.id, "fecha": self.fecha.isoformat(), "moneda_origen": self.moneda_origen, "moneda_destino": self.moneda_destino, "compra": float(self.compra), "venta": float(self.venta)}
+
+# --- NUEVO: AUDITORÍA ---
+class AuditLog(db.Model):
+    __tablename__ = 'audit_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('funcionarios.id'), nullable=True)
+    usuario = db.relationship("Funcionario")
+    accion = db.Column(db.String(50), nullable=False) # Ej: "CREAR", "EDITAR", "ELIMINAR"
+    tabla = db.Column(db.String(50), nullable=False)  # Ej: "Lote", "Cliente"
+    detalle = db.Column(db.Text, nullable=True)       # Ej: "Cambió precio de 10 a 20"
+    fecha = db.Column(db.DateTime, default=datetime.utcnow)
+    ip_address = db.Column(db.String(50), nullable=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "fecha": self.fecha.strftime("%d/%m/%Y %H:%M:%S"),
+            "usuario": self.usuario.usuario if self.usuario else "Sistema",
+            "accion": self.accion,
+            "tabla": self.tabla,
+            "detalle": self.detalle,
+            "ip_address": self.ip_address
+        }

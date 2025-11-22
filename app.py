@@ -1,13 +1,13 @@
 import os
 from flask import Flask, render_template
-from extensions import db, bcrypt, login_manager
+from extensions import db, bcrypt, login_manager, migrate, csrf
 from models import Funcionario, Role, Cargo, Aplicacion
 from dotenv import load_dotenv
 from datetime import date
 import click
 
 # Importar Blueprints
-from routes import auth, base, rrhh, tesoreria, gastos, ventas, inventario, cobros, reportes
+from routes import auth, base, rrhh, tesoreria, gastos, ventas, inventario, cobros, reportes, audit
 
 load_dotenv()
 
@@ -20,6 +20,8 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db.init_app(app)
 bcrypt.init_app(app)
 login_manager.init_app(app)
+migrate.init_app(app, db) # Migraciones
+csrf.init_app(app)        # Protección CSRF
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -35,6 +37,7 @@ app.register_blueprint(ventas.bp)
 app.register_blueprint(inventario.bp)
 app.register_blueprint(cobros.bp)
 app.register_blueprint(reportes.bp)
+app.register_blueprint(audit.bp) # Nuevo módulo de auditoría
 
 # Manejo de Errores
 @app.errorhandler(404)

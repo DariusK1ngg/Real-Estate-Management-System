@@ -1,8 +1,8 @@
-from flask import jsonify
+from flask import jsonify, request
 from flask_login import current_user
 from functools import wraps
 from extensions import db
-# Importamos ParametroSistema dentro de la función para evitar ciclos, o asumimos que models ya está cargado en app context
+from datetime import datetime
 
 def get_param(clave, default=""):
     """Obtiene un parámetro del sistema por su clave."""
@@ -40,3 +40,28 @@ def role_required(*roles):
 
 def admin_required(fn):
     return role_required('Admin')(fn)
+
+# --- FUNCIÓN DE AUDITORÍA ---
+def registrar_auditoria(accion, tabla, detalle):
+    """Registra un evento en la tabla de auditoría."""
+    from models import AuditLog
+    try:
+        user_id = current_user.id if current_user.is_authenticated else None
+        ip = request.remote_addr or '127.0.0.1'
+        
+        log = AuditLog(
+            usuario_id=user_id,
+            accion=accion,
+            tabla=tabla,
+            detalle=detalle,
+            ip_address=ip,
+            fecha=datetime.now()
+        )
+        
+        db.session.add(log)
+        db.session.commit() 
+        
+    except Exception as e:
+        # Imprimimos el error en la consola para depurar si falla
+        print(f"Error CRÍTICO al guardar auditoría: {e}")
+        db.session.rollback()

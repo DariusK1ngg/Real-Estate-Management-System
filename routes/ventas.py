@@ -1,10 +1,10 @@
 from flask import Blueprint, render_template, request, jsonify, Response
-from flask_login import login_required
+from flask_login import login_required, current_user
 from extensions import db
 from models import Cliente, Venta, VentaDetalle, TipoComprobante, Talonario, Funcionario, Lote, Contrato, Cuota
 from datetime import datetime, date, timedelta
 from sqlalchemy import or_
-from utils import role_required, get_param, clean
+from utils import role_required, get_param, clean, registrar_auditoria # <--- IMPORTANTE: Importar registrar_auditoria
 from fpdf import FPDF
 from num2words import num2words
 import locale
@@ -42,28 +42,40 @@ def ventas_reportes(): return render_template("ventas/reportes.html")
 def api_clientes():
     if request.method == "POST":
         data = request.json
+        # Validación básica
         if Cliente.query.filter_by(documento=data["documento"]).first():
             return jsonify({"error": "Ya existe un cliente con este documento"}), 400
         
-        nuevo_cliente = Cliente(
-            tipo_documento_id=data.get('tipo_documento_id'), 
-            documento=data['documento'],
-            nombre=data['nombre'].strip().title(), 
-            apellido=data['apellido'].strip().title(),
-            telefono=data.get('telefono'), 
-            email=data.get('email'),
-            direccion=data.get('direccion'),
-            ciudad_id=int(data['ciudad_id']) if data.get('ciudad_id') else None,
-            barrio_id=int(data['barrio_id']) if data.get('barrio_id') else None,
-            profesion_id=data.get('profesion_id'),
-            tipo_cliente_id=data.get('tipo_cliente_id'),
-            estado=data.get('estado', 'activo')
-        )
-        db.session.add(nuevo_cliente)
-        db.session.commit()
-        return jsonify(nuevo_cliente.to_dict()), 201
+        try:
+            nuevo_cliente = Cliente(
+                tipo_documento_id=data.get('tipo_documento_id'), 
+                documento=data['documento'],
+                nombre=data['nombre'].strip().title(), 
+                apellido=data['apellido'].strip().title(),
+                telefono=data.get('telefono'), 
+                email=data.get('email'),
+                direccion=data.get('direccion'),
+                ciudad_id=int(data['ciudad_id']) if data.get('ciudad_id') else None,
+                barrio_id=int(data['barrio_id']) if data.get('barrio_id') else None,
+                profesion_id=data.get('profesion_id'),
+                tipo_cliente_id=data.get('tipo_cliente_id'),
+                estado=data.get('estado', 'activo'),
+                activo=True # Por defecto activo
+            )
+            db.session.add(nuevo_cliente)
+            db.session.commit()
 
-    clientes = Cliente.query.order_by(Cliente.nombre).all()
+            # --- AUDITORÍA ---
+            registrar_auditoria("CREAR", "Cliente", f"Se registró al cliente {nuevo_cliente.nombre} {nuevo_cliente.apellido} ({nuevo_cliente.documento})")
+            # -----------------
+
+            return jsonify(nuevo_cliente.to_dict()), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 500
+
+    # GET: Solo mostrar clientes activos (Soft Delete)
+    clientes = Cliente.query.filter_by(activo=True).order_by(Cliente.nombre).all()
     return jsonify([c.to_dict() for c in clientes])
 
 @bp.route("/api/admin/clientes/<int:cid>", methods=["GET", "PUT", "DELETE"])
@@ -71,11 +83,15 @@ def api_clientes():
 @role_required('Admin', 'Cajero', 'Empleado')
 def api_cliente_detalle(cid):
     cliente = Cliente.query.get_or_404(cid)
+    
     if request.method == "PUT":
         data = request.json
         if 'documento' in data and data['documento'] != cliente.documento and Cliente.query.filter_by(documento=data['documento']).first():
             return jsonify({"error": "Ya existe otro cliente con ese documento"}), 400
         
+        # Guardar valores anteriores para el log
+        valores_antiguos = f"{cliente.nombre} {cliente.apellido}"
+
         cliente.tipo_documento_id = data.get('tipo_documento_id', cliente.tipo_documento_id)
         cliente.documento = data.get('documento', cliente.documento)
         cliente.nombre = data.get('nombre', cliente.nombre)
@@ -88,13 +104,28 @@ def api_cliente_detalle(cid):
         cliente.profesion_id = data.get('profesion_id', cliente.profesion_id)
         cliente.tipo_cliente_id = data.get('tipo_cliente_id', cliente.tipo_cliente_id)
         cliente.estado = data.get('estado', cliente.estado)
+        
         db.session.commit()
+
+        # --- AUDITORÍA ---
+        registrar_auditoria("EDITAR", "Cliente", f"Se modificó al cliente ID {cid}. Anterior: {valores_antiguos}")
+        # -----------------
+
         return jsonify(cliente.to_dict())
 
     if request.method == "DELETE":
-        if cliente.contratos: return jsonify({"error": "No se puede eliminar, tiene contratos asociados."}), 400
-        db.session.delete(cliente); db.session.commit()
+        # SOFT DELETE: No borramos, solo desactivamos
+        cliente.activo = False
+        cliente.estado = 'inactivo'
+        
+        db.session.commit()
+
+        # --- AUDITORÍA ---
+        registrar_auditoria("ELIMINAR", "Cliente", f"Se eliminó (soft) al cliente {cliente.nombre} {cliente.apellido} ({cliente.documento})")
+        # -----------------
+
         return jsonify({"message": "Cliente eliminado exitosamente."})
+    
     return jsonify(cliente.to_dict())
 
 @bp.route("/api/admin/clientes/buscar")
@@ -102,13 +133,21 @@ def api_cliente_detalle(cid):
 def api_buscar_clientes(): 
     query = request.args.get("q", "")
     search_term = f"%{query}%"
-    clientes = Cliente.query.filter(or_((Cliente.nombre + " " + Cliente.apellido).ilike(search_term), Cliente.documento.ilike(search_term))).limit(10).all()
+    # Filtrar solo activos en la búsqueda también
+    clientes = Cliente.query.filter(
+        Cliente.activo == True,
+        or_(
+            (Cliente.nombre + " " + Cliente.apellido).ilike(search_term), 
+            Cliente.documento.ilike(search_term)
+        )
+    ).limit(10).all()
     return jsonify([c.to_dict() for c in clientes])
 
 @bp.route("/api/admin/lotes-disponibles")
 @login_required
 def api_lotes_disponibles(): 
-    lotes = Lote.query.filter(Lote.estado.in_(["disponible", "reservado"])).all()
+    # Asegurar filtrar lotes activos si implementaste soft delete en lotes también
+    lotes = Lote.query.filter(Lote.estado.in_(["disponible", "reservado"]), Lote.activo == True).all()
     return jsonify([{"id": l.id, "texto": f"{l.fraccionamiento.nombre} - M{l.manzana} L{l.numero_lote} - Gs. {int(l.precio):,}", "precio": float(l.precio)} for l in lotes])
 
 @bp.route("/api/admin/vendedores")
@@ -160,6 +199,11 @@ def api_ventas():
                 )
                 db.session.add(detalle)
             db.session.commit()
+
+            # --- AUDITORÍA ---
+            registrar_auditoria("CREAR", "Venta", f"Venta registrada N° {nro_factura} por Gs. {total_factura:,.0f}")
+            # -----------------
+
             return jsonify(nueva_venta.to_dict()), 201
         except Exception as e:
             db.session.rollback(); return jsonify({"error": str(e)}), 500
@@ -176,6 +220,11 @@ def api_venta_detalle(venta_id):
         if venta.estado == 'anulada': return jsonify({"error": "Ya anulada"}), 400
         venta.estado = 'anulada'
         db.session.commit()
+
+        # --- AUDITORÍA ---
+        registrar_auditoria("ANULAR", "Venta", f"Anulación de factura N° {venta.numero_factura}")
+        # -----------------
+
         return jsonify({"message": "Anulada"})
     return jsonify(venta.to_dict())
 
@@ -190,8 +239,7 @@ def generar_factura_pdf(venta_id):
 
     empresa_nombre = get_param('EMPRESA_NOMBRE', 'INMOBILIARIA TU HOGAR S.A.')
     empresa_dir = get_param('EMPRESA_DIRECCION', 'Ruta 6ta, Km 45')
-    tasa_iva = float(get_param('IVA_DEFECTO', '10'))
-
+    
     class PDF(FPDF):
         def header(self):
             self.set_font('Helvetica', 'B', 14); self.cell(0, 10, clean(empresa_nombre), 0, 1, 'L')
