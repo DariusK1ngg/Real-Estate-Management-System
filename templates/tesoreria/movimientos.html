@@ -9,26 +9,26 @@ Gestión de Tesorería / Movimientos
 <div class="modal fade" id="modalDeposito" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
+            <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title">Registrar Depósito</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="formDeposito">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="deposito-cuenta" class="form-label">Cuenta de Destino</label>
+                        <label for="deposito-cuenta" class="form-label fw-bold">Cuenta de Destino</label>
                         <select id="deposito-cuenta" name="cuenta_id" class="form-select" required></select>
                     </div>
                     <div class="mb-3">
-                        <label for="deposito-fecha" class="form-label">Fecha del Depósito</label>
+                        <label for="deposito-fecha" class="form-label fw-bold">Fecha del Depósito</label>
                         <input type="date" id="deposito-fecha" name="fecha_deposito" class="form-control" required>
                     </div>
                     <div class="mb-3">
-                        <label for="deposito-monto" class="form-label">Monto Depositado (Gs.)</label>
-                        <input type="number" id="deposito-monto" name="monto" class="form-control" step="1" required>
+                        <label for="deposito-monto" class="form-label fw-bold">Monto Depositado (Gs.)</label>
+                        <input type="text" id="deposito-monto" name="monto" class="form-control input-money fw-bold" placeholder="0" required>
                     </div>
                     <div class="mb-3">
-                        <label for="deposito-referencia" class="form-label">Referencia (N° boleta, etc.)</label>
+                        <label for="deposito-referencia" class="form-label">Referencia (N° boleta)</label>
                         <input type="text" id="deposito-referencia" name="referencia" class="form-control">
                     </div>
                     <div class="mb-3">
@@ -38,7 +38,7 @@ Gestión de Tesorería / Movimientos
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Guardar Depósito</button>
+                    <button type="submit" class="btn btn-success">Confirmar Depósito</button>
                 </div>
             </form>
         </div>
@@ -57,24 +57,24 @@ Gestión de Tesorería / Movimientos
 
     <div class="tab-content pt-3">
         <div id="tab-depositos" class="tab-pane fade show active">
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">Depósitos Bancarios</h2>
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">Historial de Movimientos</h3>
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalDeposito" id="btnNuevoDeposito">
-                        + Cargar Depósito
+                        <i class="fas fa-plus-circle"></i> Cargar Depósito
                     </button>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table">
-                            <thead>
+                        <table class="table table-striped table-hover mb-0 align-middle">
+                            <thead class="table-light">
                                 <tr>
                                     <th>Fecha</th>
                                     <th>Cuenta</th>
-                                    <th>Monto (Gs.)</th>
+                                    <th class="text-end">Monto (Gs.)</th>
                                     <th>Referencia</th>
                                     <th>Estado</th>
-                                    <th>Acciones</th>
+                                    <th class="text-end pe-3">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="tbodyDepositos"></tbody>
@@ -85,31 +85,29 @@ Gestión de Tesorería / Movimientos
         </div>
 
         <div id="tab-transferencias" class="tab-pane fade">
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">Realizar Transferencia entre Cuentas</h2>
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h3 class="card-title mb-0">Realizar Transferencia Interna</h3>
                 </div>
                 <div class="card-body">
                     <form id="formTransferencia">
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="transferCuentaOrigen" class="form-label">Cuenta de Origen</label>
-                                <select class="form-select" id="transferCuentaOrigen" required>
-                                    </select>
+                                <label for="transferCuentaOrigen" class="form-label fw-bold">Cuenta de Origen</label>
+                                <select class="form-select" id="transferCuentaOrigen" required></select>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="transferCuentaDestino" class="form-label">Cuenta de Destino</label>
-                                <select class="form-select" id="transferCuentaDestino" required>
-                                    </select>
+                                <label for="transferCuentaDestino" class="form-label fw-bold">Cuenta de Destino</label>
+                                <select class="form-select" id="transferCuentaDestino" required></select>
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="transferMonto" class="form-label">Monto (Gs.)</label>
-                                <input type="number" class="form-control" id="transferMonto" min="1" required>
+                                <label for="transferMonto" class="form-label fw-bold">Monto a Transferir (Gs.)</label>
+                                <input type="text" class="form-control input-money fw-bold" id="transferMonto" placeholder="0" required>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="transferFecha" class="form-label">Fecha</label>
+                                <label for="transferFecha" class="form-label fw-bold">Fecha</label>
                                 <input type="date" class="form-control" id="transferFecha" required>
                             </div>
                         </div>
@@ -117,7 +115,11 @@ Gestión de Tesorería / Movimientos
                             <label for="transferConcepto" class="form-label">Concepto</label>
                             <input type="text" class="form-control" id="transferConcepto" placeholder="Transferencia entre cuentas">
                         </div>
-                        <button type="submit" class="btn btn-success">Realizar Transferencia</button>
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-exchange-alt"></i> Realizar Transferencia
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>

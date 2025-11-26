@@ -2,12 +2,12 @@ from flask import Blueprint, render_template, request, jsonify, session, Respons
 from flask_login import login_required, current_user
 from extensions import db
 from models import Pago, Cuota, Caja, MovimientoCaja, CuentaBancaria, DepositoBancario
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
 from utils import role_required, get_param, clean
 from fpdf import FPDF
 from num2words import num2words
-import locale
+from sqlalchemy import desc
 
 bp = Blueprint('cobros', __name__)
 
@@ -26,11 +26,35 @@ def cobros_reportes(): return render_template("cobros/reportes.html")
 @role_required('Admin', 'Cajero')
 def cobros_definiciones(): return render_template("cobros/definiciones.html")
 
+# --- MODIFICADO: ORDENAMIENTO PRIORITARIO DE SERVICIOS ---
 @bp.route("/api/admin/clientes/<int:cliente_id>/cuotas")
 @login_required
 def api_get_cuotas_por_cliente(cliente_id):
-    cuotas = Cuota.query.filter(Cuota.contrato.has(cliente_id=cliente_id), Cuota.estado.in_(['pendiente', 'vencida'])).order_by(Cuota.fecha_vencimiento).all()
-    return jsonify([c.to_dict() for c in cuotas])
+    # Ordenamos por tipo (descendente para que 'servicio' > 'cuota') y luego por fecha
+    cuotas = Cuota.query.filter(
+        Cuota.contrato.has(cliente_id=cliente_id), 
+        Cuota.estado.in_(['pendiente', 'vencida'])
+    ).order_by(desc(Cuota.tipo), Cuota.fecha_vencimiento).all()
+    
+    data = []
+    today = date.today()
+    
+    for c in cuotas:
+        c_dict = c.to_dict()
+        dias_atraso = (today - c.fecha_vencimiento).days
+        interes = 0.0
+        
+        if dias_atraso > 90 and c.tipo == 'cuota': # Solo aplica mora a cuotas de lote, no a servicios
+            tasa_diaria = 0.0275 
+            interes = float(c.valor_cuota) * tasa_diaria * dias_atraso
+            
+        c_dict['dias_atraso'] = dias_atraso if dias_atraso > 0 else 0
+        c_dict['interes_mora'] = interes
+        c_dict['total_pagar'] = float(c.valor_cuota) + interes
+        
+        data.append(c_dict)
+
+    return jsonify(data)
 
 @bp.route("/api/admin/pagos", methods=["POST"])
 @login_required
@@ -39,17 +63,14 @@ def api_registrar_pago():
     forma_id = int(data.get("forma_pago_id"))
     monto = Decimal(str(data["monto"]))
     
-    # --- CORRECCIÓN: Sanitizar cuenta_bancaria_id ---
-    # Si viene vacío (string vacío), lo convertimos a None (NULL en base de datos)
     cuenta_bancaria_id = data.get("cuenta_bancaria_id")
     if not cuenta_bancaria_id:
         cuenta_bancaria_id = None
     else:
         cuenta_bancaria_id = int(cuenta_bancaria_id)
-    # -----------------------------------------------
 
     caja = None
-    if forma_id == 1: # Efectivo
+    if forma_id == 1: 
         caja_id = session.get("caja_id")
         if not caja_id: return jsonify({"error": "Caja no abierta en sesión"}), 403
         caja = Caja.query.get(caja_id)
@@ -67,7 +88,7 @@ def api_registrar_pago():
         referencia=data.get("referencia"), 
         observaciones=data.get("observaciones"),
         usuario_id=current_user.id, 
-        cuenta_bancaria_id=cuenta_bancaria_id # Usamos la variable saneada
+        cuenta_bancaria_id=cuenta_bancaria_id
     )
     db.session.add(pago)
     
@@ -75,13 +96,12 @@ def api_registrar_pago():
     cuota.fecha_pago = pago.fecha_pago
     cuota.valor_pagado = monto
     
-    # Lógica de movimiento de dinero
     if forma_id == 1 and caja:
         mov = MovimientoCaja(
             caja_id=caja.id, 
             tipo_movimiento="ingreso", 
             monto=monto, 
-            concepto=f"Cobro cuota {cuota.numero_cuota}", 
+            concepto=f"Cobro {cuota.tipo.title()} {cuota.numero_cuota} - {cuota.contrato.cliente.nombre}", 
             fecha_hora=datetime.now(), 
             pago_id=pago.id, 
             usuario_id=current_user.id
@@ -97,7 +117,7 @@ def api_registrar_pago():
                 fecha_deposito=pago.fecha_pago, 
                 monto=monto, 
                 referencia="Cobro Auto", 
-                concepto="Cobro Cuota", 
+                concepto=f"Cobro {cuota.tipo.title()}", 
                 estado='confirmado', 
                 usuario_id=current_user.id
             )
@@ -115,10 +135,11 @@ def generar_recibo_pdf(pago_id):
     except: letras = str(int(pago.monto))
     
     class PDF(FPDF):
-        def header(self): self.set_font('Arial','B',14); self.cell(0,10,'RECIBO',0,1,'C')
+        def header(self): self.set_font('Arial','B',14); self.cell(0,10,'RECIBO DE DINERO',0,1,'C')
     
     pdf = PDF(); pdf.add_page(); pdf.set_font('Arial','',12)
-    pdf.cell(0,10, clean(f"Recibí de: {pago.contrato.cliente.nombre}"), 0, 1)
-    pdf.cell(0,10, clean(f"La suma de: {letras.upper()}"), 0, 1)
+    pdf.cell(0,10, clean(f"Recibí de: {pago.contrato.cliente.nombre} {pago.contrato.cliente.apellido}"), 0, 1)
+    pdf.cell(0,10, clean(f"La suma de: {letras.upper()} GUARANIES"), 0, 1)
+    pdf.cell(0,10, clean(f"Concepto: Pago de {pago.cuota.tipo} N° {pago.cuota.numero_cuota} ({pago.cuota.observaciones or ''})"), 0, 1)
     pdf.cell(0,10, f"Monto: {int(pago.monto):,}", 0, 1)
     return Response(pdf.output(dest='S').encode('latin-1'), mimetype="application/pdf")

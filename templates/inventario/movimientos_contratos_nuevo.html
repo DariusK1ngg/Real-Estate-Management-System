@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Gestión de Inventario / Nuevo Contrato
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+        <h4 class="card-title mb-0"><i class="fas fa-file-signature"></i> Cargar Nuevo Contrato</h4>
+    </div>
+    <div class="card-body">
+        <form id="formNuevoContrato">
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Número de Contrato</label>
+                    <input type="text" name="numero_contrato" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Fecha de Firma</label>
+                    <input type="date" name="fecha_contrato" class="form-control" value="{{ now }}" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Tipo de Operación</label>
+                    <select name="tipo_contrato" class="form-select">
+                        <option value="venta">Venta (Lote Vendido)</option>
+                        <option value="reserva">Reserva (Lote Reservado)</option>
+                        <option value="alquiler">Alquiler</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Cliente Titular</label>
+                    <select class="form-select" id="selectCliente" name="cliente_id" required style="width: 100%"></select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Lote / Inmueble</label>
+                    <select class="form-select" id="selectLote" name="lote_id" required style="width: 100%"></select>
+                </div>
+            </div>
+
+            <div class="mb-4 p-3 bg-light border rounded" id="seccion-precios" style="display:none;">
+                <label class="form-label text-primary fw-bold"><i class="fas fa-tags"></i> Planes de Financiación Disponibles</label>
+                <select class="form-select" id="selectPrecio" name="precio_id">
+                    <option value="">-- Personalizado --</option>
+                </select>
+            </div>
+
+            <h5 class="mb-3 border-bottom pb-2">Detalles Financieros</h5>
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Monto Total del Contrato</label>
+                    <div class="input-group">
+                        <span class="input-group-text">Gs.</span>
+                        <input type="text" id="valor_total" name="valor_total" class="form-control input-money fw-bold" required>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Entrega Inicial</label>
+                    <div class="input-group">
+                        <span class="input-group-text">Gs.</span>
+                        <input type="text" name="cuota_inicial" class="form-control input-money" value="0">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Cantidad de Cuotas</label>
+                    <input type="number" id="cantidad_cuotas" name="cantidad_cuotas" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Valor de la Cuota</label>
+                    <div class="input-group">
+                        <span class="input-group-text">Gs.</span>
+                        <input type="text" id="valor_cuota" name="valor_cuota" class="form-control input-money fw-bold" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">Observaciones / Notas Adicionales</label>
+                <textarea name="observaciones" class="form-control" rows="2"></textarea>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{{ url_for('inventario.inventario_movimientos') }}" class="btn btn-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="fas fa-save"></i> Guardar Contrato
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="{{ url_for('static', filename='js/inventario_contrato_nuevo.js') }}"></script>
+{% endblock %}

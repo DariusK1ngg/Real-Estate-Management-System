@@ -1,11 +1,13 @@
+/* static/js/tesoreria.js */
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Carga inicial de datos si estamos en la página de Definiciones
+    // Detectar si estamos en Definiciones
     if (document.getElementById('tbodyEntidades')) {
         cargarEntidades();
         cargarCuentasBancarias();
     }
     
-    // Carga inicial si estamos en Movimientos
+    // Detectar si estamos en Movimientos
     if (document.getElementById('tbodyDepositos')) {
         cargarDepositos();
         setupModalDeposito();
@@ -13,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// --- VARIABLES GLOBALES DE MODALES ---
+// --- VARIABLES GLOBALES ---
 let modalEntidadInstance = null;
 let modalCuentaInstance = null;
 let entidadEditandoId = null;
@@ -23,13 +25,10 @@ let cuentaEditandoId = null;
 // GESTIÓN DE ENTIDADES FINANCIERAS
 // =======================================================
 
-// Abrir Modal (Nueva / Editar)
 window.abrirModalEntidad = function(entidad = null) {
     const modalEl = document.getElementById('modalEntidad');
     if (!modalEl) return;
-
-    // [CRÍTICO] Mover al body para evitar problemas de z-index (pantalla oscura)
-    document.body.appendChild(modalEl);
+    document.body.appendChild(modalEl); // Mover al body para evitar errores de z-index
 
     if (!modalEntidadInstance) {
         modalEntidadInstance = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
@@ -52,7 +51,6 @@ window.abrirModalEntidad = function(entidad = null) {
     modalEntidadInstance.show();
 };
 
-// Cerrar Modal
 window.cerrarModalEntidad = function() {
     if (modalEntidadInstance) modalEntidadInstance.hide();
     else {
@@ -62,10 +60,13 @@ window.cerrarModalEntidad = function() {
     }
 };
 
-// Guardar Entidad
 window.guardarEntidad = async function() {
     const form = document.getElementById('formEntidad');
     const data = Object.fromEntries(new FormData(form));
+    
+    // Validación básica
+    if (!data.nombre.trim()) return Toast.fire({ icon: 'warning', title: 'El nombre es obligatorio' });
+
     const url = entidadEditandoId ? `/api/admin/entidades-financieras/${entidadEditandoId}` : '/api/admin/entidades-financieras';
     const method = entidadEditandoId ? 'PUT' : 'POST';
 
@@ -76,16 +77,17 @@ window.guardarEntidad = async function() {
             body: JSON.stringify(data)
         });
         const result = await response.json();
+        
         if (response.ok) {
-            alert('Entidad guardada correctamente.');
+            Toast.fire({ icon: 'success', title: 'Entidad guardada' });
             window.cerrarModalEntidad();
             cargarEntidades();
-            cargarCuentasBancarias(); // Actualizar selects
+            cargarCuentasBancarias(); 
         } else { 
-            alert(`Error: ${result.error}`); 
+            Toast.fire({ icon: 'error', title: result.error });
         }
     } catch (e) {
-        alert('Error de red al guardar entidad.');
+        Toast.fire({ icon: 'error', title: 'Error de red' });
     }
 };
 
@@ -104,24 +106,18 @@ async function cargarEntidades() {
         }
 
         entidades.forEach(e => {
-            // Escapar comillas para el HTML
             const entidadStr = JSON.stringify(e).replace(/"/g, '&quot;');
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${e.nombre}</td>
                 <td class="text-end">
-                    <button class="btn btn-sm btn-warning" onclick="abrirModalEntidad(${entidadStr})">
-                        <i class="fas fa-edit"></i> Editar
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="eliminarEntidad(${e.id})">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    <button class="btn btn-sm btn-warning" onclick="abrirModalEntidad(${entidadStr})"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarEntidad(${e.id})"><i class="fas fa-trash"></i></button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
         
-        // Actualizar dropdowns en otros formularios
         actualizarSelectEntidades(entidades);
 
     } catch (e) {
@@ -139,7 +135,6 @@ function actualizarSelectEntidades(entidades) {
         entidades.forEach(e => {
             select.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
         });
-        // Intentar restaurar valor
         if(valorActual) select.value = valorActual;
     });
 }
@@ -150,12 +145,12 @@ window.eliminarEntidad = async function(id) {
         const response = await fetch(`/api/admin/entidades-financieras/${id}`, { method: 'DELETE' });
         const result = await response.json();
         if (response.ok) {
-            alert(result.message);
+            Toast.fire({ icon: 'success', title: 'Entidad eliminada' });
             cargarEntidades();
         } else { 
-            alert(`Error: ${result.error}`); 
+            Toast.fire({ icon: 'error', title: result.error });
         }
-    } catch (e) { alert('Error de red.'); }
+    } catch (e) { Toast.fire({ icon: 'error', title: 'Error de red' }); }
 };
 
 
@@ -166,8 +161,6 @@ window.eliminarEntidad = async function(id) {
 window.abrirModalCuenta = async function(cuenta = null) {
     const modalEl = document.getElementById('modalCuenta');
     if (!modalEl) return;
-
-    // [CRÍTICO] Mover al body
     document.body.appendChild(modalEl);
 
     if (!modalCuentaInstance) {
@@ -181,7 +174,6 @@ window.abrirModalCuenta = async function(cuenta = null) {
     const title = document.getElementById('modalCuentaTitle');
     if(title) title.textContent = 'Nueva Cuenta Bancaria';
 
-    // Verificar si hay entidades cargadas
     const selectEntidad = document.getElementById('cuenta_entidad');
     if (selectEntidad && selectEntidad.options.length <= 1) {
         await cargarEntidades();
@@ -201,10 +193,6 @@ window.abrirModalCuenta = async function(cuenta = null) {
     modalCuentaInstance.show();
 };
 
-// Cerrar Modal Cuenta
-// Como en el HTML usaste onclick="cerrarModal('modalCuenta')", necesitamos soportar esa llamada genérica
-// O podemos actualizar el HTML. Para ser compatibles con tu HTML actual, definimos cerrarModal globalmente en main.js
-// Pero aquí definimos la específica por si acaso.
 window.cerrarModalCuenta = function() {
     if(modalCuentaInstance) modalCuentaInstance.hide();
     else {
@@ -228,13 +216,13 @@ window.guardarCuenta = async function() {
         });
         const result = await response.json();
         if (response.ok) {
-            alert('Cuenta guardada correctamente.');
+            Toast.fire({ icon: 'success', title: 'Cuenta guardada' });
             window.cerrarModalCuenta();
             cargarCuentasBancarias();
         } else { 
-            alert(`Error: ${result.error}`); 
+            Toast.fire({ icon: 'error', title: result.error });
         }
-    } catch (e) { alert('Error de red.'); }
+    } catch (e) { Toast.fire({ icon: 'error', title: 'Error de red' }); }
 };
 
 async function cargarCuentasBancarias() {
@@ -253,11 +241,12 @@ async function cargarCuentasBancarias() {
 
         cuentas.forEach(c => {
             const cuentaStr = JSON.stringify(c).replace(/"/g, '&quot;');
-            
-            // Lógica: Ocultar botón editar si tiene movimientos
             const btnEditar = c.tiene_movimientos 
-                ? `<span class="badge bg-secondary" title="No editable por tener movimientos">Bloqueado</span>` 
-                : `<button class="btn btn-sm btn-warning" onclick="abrirModalCuenta(${cuentaStr})"><i class="fas fa-edit"></i> Editar</button>`;
+                ? `<span class="badge bg-secondary" title="Bloqueado por movimientos">Bloqueado</span>` 
+                : `<button class="btn btn-sm btn-warning" onclick="abrirModalCuenta(${cuentaStr})"><i class="fas fa-edit"></i></button>`;
+
+            // FORMATO VISUAL UNIFICADO (formatMoney)
+            const saldoVisual = formatMoney(c.saldo);
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -266,7 +255,7 @@ async function cargarCuentasBancarias() {
                 <td>${c.titular}</td>
                 <td>${c.tipo_cuenta}</td>
                 <td>${c.moneda}</td>
-                <td class="text-end fw-bold">${c.saldo.toLocaleString('es-PY')}</td>
+                <td class="text-end fw-bold">Gs. ${saldoVisual}</td>
                 <td class="text-end">
                     ${btnEditar}
                     <button class="btn btn-sm btn-danger" onclick="eliminarCuenta(${c.id})"><i class="fas fa-trash"></i></button>
@@ -285,37 +274,25 @@ window.eliminarCuenta = async function(id) {
         const response = await fetch(`/api/admin/cuentas-bancarias/${id}`, { method: 'DELETE' });
         const result = await response.json();
         if (response.ok) {
-            alert(result.message);
+            Toast.fire({ icon: 'success', title: 'Cuenta eliminada' });
             cargarCuentasBancarias();
         } else { 
-            alert(`Error: ${result.error}`); 
+            Toast.fire({ icon: 'error', title: result.error });
         }
-    } catch (e) { alert('Error de red.'); }
+    } catch (e) { Toast.fire({ icon: 'error', title: 'Error de red' }); }
 };
 
-
-// =======================================================
-// UTILIDAD COMPATIBILIDAD
-// =======================================================
-// Esta función captura las llamadas del HTML `onclick="cerrarModal('modalEntidad')"` 
-// y las redirige a la lógica correcta de Bootstrap.
+// Utilidad de compatibilidad para llamadas HTML directas
 window.cerrarModal = function(modalId) {
     const el = document.getElementById(modalId);
     if (!el) return;
     const instance = bootstrap.Modal.getInstance(el);
-    if (instance) {
-        instance.hide();
-    } else {
-        // Fallback por si se abrió manualmente (no debería pasar con este código)
-        el.style.display = 'none';
-        // Remover backdrop manualmente si quedó pegado
-        document.querySelectorAll('.modal-backdrop').forEach(bd => bd.remove());
-    }
+    if (instance) instance.hide();
 };
 
 
 // =======================================================
-// DEPÓSITOS Y TRANSFERENCIAS (Página Movimientos)
+// DEPÓSITOS Y TRANSFERENCIAS (MOVIMIENTOS)
 // =======================================================
 let modalDeposito = null;
 let formDeposito = null;
@@ -324,7 +301,6 @@ function setupModalDeposito() {
     const modalEl = document.getElementById('modalDeposito');
     if (!modalEl) return;
     
-    // Mover al body
     document.body.appendChild(modalEl);
     modalDeposito = new bootstrap.Modal(modalEl);
     formDeposito = document.getElementById('formDeposito');
@@ -334,6 +310,10 @@ function setupModalDeposito() {
         btnNuevo.addEventListener('click', async () => {
             formDeposito.reset();
             document.getElementById('deposito-fecha').valueAsDate = new Date();
+            // Resetear input de dinero visual
+            const inputMonto = document.getElementById('deposito-monto');
+            if(inputMonto) inputMonto.value = '';
+            
             await loadCuentasBancariasDropdown('deposito-cuenta');
         });
     }
@@ -345,7 +325,24 @@ function setupModalDeposito() {
 }
 
 async function guardarDeposito() {
-    const data = Object.fromEntries(new FormData(formDeposito).entries());
+    // Obtener datos y PARSEAR MONTO
+    const cuentaId = document.getElementById('deposito-cuenta').value;
+    const fecha = document.getElementById('deposito-fecha').value;
+    const montoRaw = document.getElementById('deposito-monto').value;
+    const monto = parseMoney(montoRaw); // Usar parser global
+    const ref = document.getElementById('deposito-referencia').value;
+    const concepto = document.getElementById('deposito-concepto').value;
+
+    if(!cuentaId || !fecha || monto <= 0) return Toast.fire({ icon: 'warning', title: 'Complete todos los campos' });
+
+    const data = {
+        cuenta_id: cuentaId,
+        fecha_deposito: fecha,
+        monto: monto,
+        referencia: ref,
+        concepto: concepto
+    };
+
     try {
         const response = await fetch('/api/admin/depositos', {
             method: 'POST',
@@ -354,16 +351,15 @@ async function guardarDeposito() {
         });
         const result = await response.json();
         if (response.ok) {
-            alert('Depósito guardado.');
+            Toast.fire({ icon: 'success', title: 'Depósito guardado' });
             modalDeposito.hide();
             cargarDepositos();
-            // Recargar saldos en pestaña transferencias si existe
             if (document.getElementById('transferCuentaOrigen')) {
                  loadCuentasBancariasDropdown('transferCuentaOrigen');
                  loadCuentasBancariasDropdown('transferCuentaDestino');
             }
-        } else { alert('Error: ' + result.error); }
-    } catch (e) { alert('Error de red'); }
+        } else { Toast.fire({ icon: 'error', title: result.error }); }
+    } catch (e) { Toast.fire({ icon: 'error', title: 'Error de red' }); }
 }
 
 async function cargarDepositos() {
@@ -374,18 +370,26 @@ async function cargarDepositos() {
         const response = await fetch('/api/admin/depositos');
         const depositos = await response.json();
         tbody.innerHTML = '';
+        
+        if(depositos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Sin movimientos.</td></tr>';
+            return;
+        }
+
         depositos.forEach(d => {
-            const montoFormateado = d.monto.toLocaleString('es-PY');
+            const montoFormateado = formatMoney(d.monto); // Formato visual
             const fechaFormateada = new Date(d.fecha_deposito + 'T00:00:00').toLocaleDateString('es-ES');
+            const colorMonto = d.monto >= 0 ? 'text-success' : 'text-danger';
+            
             tbody.innerHTML += `
                 <tr>
                     <td>${fechaFormateada}</td>
                     <td>${d.cuenta_info}</td>
-                    <td style="color: ${d.monto >= 0 ? 'green' : 'red'}; text-align:right;">${montoFormateado}</td>
-                    <td>${d.referencia}</td>
+                    <td class="${colorMonto} fw-bold text-end">Gs. ${montoFormateado}</td>
+                    <td>${d.referencia || '-'}</td>
                     <td><span class="badge ${d.estado === 'confirmado' ? 'bg-success' : 'bg-danger'}">${d.estado}</span></td>
-                    <td>
-                        ${d.estado !== 'anulado' ? `<button class="btn btn-sm btn-danger" onclick="anularDeposito(${d.id})">Anular</button>` : ''}
+                    <td class="text-end">
+                        ${d.estado !== 'anulado' ? `<button class="btn btn-sm btn-outline-danger" onclick="anularDeposito(${d.id})"><i class="fas fa-ban"></i></button>` : ''}
                     </td>
                 </tr>`;
         });
@@ -393,15 +397,15 @@ async function cargarDepositos() {
 }
 
 window.anularDeposito = async function(id) {
-    if (!confirm('¿Anular depósito?')) return;
+    if (!confirm('¿Anular este movimiento?')) return;
     try {
         const response = await fetch(`/api/admin/depositos/${id}`, { method: 'DELETE' });
         const result = await response.json();
         if (response.ok) {
-            alert(result.message);
+            Toast.fire({ icon: 'success', title: 'Anulado correctamente' });
             cargarDepositos();
-        } else { alert('Error: ' + result.error); }
-    } catch (e) { alert('Error de red'); }
+        } else { Toast.fire({ icon: 'error', title: result.error }); }
+    } catch (e) { Toast.fire({ icon: 'error', title: 'Error de red' }); }
 };
 
 async function loadCuentasBancariasDropdown(selectId) {
@@ -413,7 +417,8 @@ async function loadCuentasBancariasDropdown(selectId) {
         const val = select.value;
         select.innerHTML = '<option value="">Seleccione...</option>';
         cuentas.forEach(c => {
-            select.innerHTML += `<option value="${c.id}">${c.entidad_nombre} - ${c.numero_cuenta} (Saldo: ${c.saldo.toLocaleString('es-PY')})</option>`;
+            // Mostrar saldo formateado en el dropdown
+            select.innerHTML += `<option value="${c.id}">${c.entidad_nombre} - ${c.numero_cuenta} (Saldo: Gs. ${formatMoney(c.saldo)})</option>`;
         });
         if(val) select.value = val;
     } catch (e) { console.error(e); }
@@ -429,20 +434,27 @@ function setupTransferenciasTab() {
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
+        // PARSEAR MONTO DE INPUT VISUAL
+        const montoRaw = document.getElementById('transferMonto').value;
+        const monto = parseMoney(montoRaw);
+
         const data = {
             cuenta_origen_id: document.getElementById('transferCuentaOrigen').value,
             cuenta_destino_id: document.getElementById('transferCuentaDestino').value,
-            monto: parseFloat(document.getElementById('transferMonto').value),
+            monto: monto,
             fecha: document.getElementById('transferFecha').value,
             concepto: document.getElementById('transferConcepto').value || 'Transferencia'
         };
 
         if (data.cuenta_origen_id === data.cuenta_destino_id) {
-            alert('Cuentas origen y destino deben ser diferentes.');
-            return;
+            return Toast.fire({ icon: 'warning', title: 'Las cuentas deben ser diferentes' });
+        }
+        if (data.monto <= 0) {
+            return Toast.fire({ icon: 'warning', title: 'Monto inválido' });
         }
 
-        if (!confirm(`¿Confirmar transferencia de Gs. ${data.monto.toLocaleString('es-PY')}?`)) return;
+        if (!confirm(`¿Confirmar transferencia de Gs. ${formatMoney(data.monto)}?`)) return;
         
         try {
             const response = await fetch('/api/admin/transferencias', {
@@ -453,12 +465,15 @@ function setupTransferenciasTab() {
             const result = await response.json();
             if (!response.ok) throw new Error(result.error);
             
-            alert('Transferencia exitosa');
+            Toast.fire({ icon: 'success', title: 'Transferencia exitosa' });
             form.reset();
             document.getElementById('transferFecha').valueAsDate = new Date();
+            // Limpiar input money
+            document.getElementById('transferMonto').value = '';
+            
             loadCuentasBancariasDropdown('transferCuentaOrigen');
             loadCuentasBancariasDropdown('transferCuentaDestino');
             cargarDepositos(); 
-        } catch (error) { alert(error.message); }
+        } catch (error) { Toast.fire({ icon: 'error', title: error.message }); }
     });
 }

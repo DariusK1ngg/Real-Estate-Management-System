@@ -1,11 +1,12 @@
 from flask import Blueprint, render_template, request, jsonify, Response
 from flask_login import login_required
 from extensions import db
-from models import Fraccionamiento, Lote, ListaPrecioLote, CondicionPago, Contrato, Cuota
+from models import Fraccionamiento, Lote, ListaPrecioLote, CondicionPago, Contrato, Cuota, Cliente
 from datetime import datetime, timedelta, date
-from utils import role_required, admin_required, get_param, clean
+from utils import role_required, admin_required, get_param, clean, registrar_auditoria
 from fpdf import FPDF
 from num2words import num2words
+from sqlalchemy import or_
 import locale
 
 bp = Blueprint('inventario', __name__)
@@ -13,7 +14,14 @@ bp = Blueprint('inventario', __name__)
 @bp.route("/admin/inventario/movimientos")
 @login_required
 @role_required('Empleado', 'Vendedor')
-def inventario_movimientos(): return render_template("inventario/movimientos.html")
+def inventario_movimientos(): 
+    return render_template("inventario/movimientos.html")
+
+@bp.route("/admin/inventario/movimientos/contratos/nuevo")
+@login_required
+@role_required('Empleado', 'Vendedor')
+def inventario_movimientos_contratos_nuevo(): 
+    return render_template("inventario/movimientos_contratos_nuevo.html", now=date.today().isoformat())
 
 @bp.route("/admin/inventario/reportes")
 @login_required
@@ -70,7 +78,9 @@ def api_fraccionamiento_detalle_completo(fid):
 def api_admin_crear_fraccionamiento():
     data = request.get_json(force=True)
     if not data.get('nombre') or not data.get('geojson'): return jsonify({"error": "Datos incompletos"}), 400
-    f = Fraccionamiento(nombre=data["nombre"], descripcion=data.get("descripcion", ""), geojson=data["geojson"], ciudad_id=data.get("ciudad_id"))
+    
+    ciudad_id = int(data["ciudad_id"]) if data.get("ciudad_id") else None
+    f = Fraccionamiento(nombre=data["nombre"], descripcion=data.get("descripcion", ""), geojson=data["geojson"], ciudad_id=ciudad_id)
     db.session.add(f); db.session.commit()
     return jsonify({"ok": True, "id": f.id}), 201
 
@@ -142,6 +152,12 @@ def api_delete_lista_precio(pid):
     p = ListaPrecioLote.query.get_or_404(pid)
     db.session.delete(p); db.session.commit(); return jsonify({"message": "Eliminado"})
 
+@bp.route("/api/admin/lotes-disponibles")
+@login_required
+def api_lotes_disponibles(): 
+    lotes = Lote.query.filter(Lote.estado.in_(["disponible", "reservado"]), Lote.activo == True).all()
+    return jsonify([{"id": l.id, "texto": f"{l.fraccionamiento.nombre} - M{l.manzana} L{l.numero_lote} - Gs. {int(l.precio):,}", "precio": float(l.precio)} for l in lotes])
+
 @bp.route("/api/admin/contratos", methods=["GET", "POST"])
 @login_required
 def api_contratos():
@@ -179,21 +195,67 @@ def api_contratos():
             
         lote.estado = "vendido" if c.tipo_contrato == "venta" else "reservado"
         db.session.commit()
+        registrar_auditoria("CREAR", "Contrato", f"Contrato N° {c.numero_contrato} creado para lote {lote.numero_lote}.")
         return jsonify({"ok": True, "id": c.id}), 201
 
-    return jsonify([c.to_dict() for c in Contrato.query.order_by(Contrato.fecha_contrato.desc()).all()])
+    query = Contrato.query.join(Cliente).join(Lote).join(Fraccionamiento)
+
+    search = request.args.get('q', '')
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(or_(
+            Cliente.nombre.ilike(search_term),
+            Cliente.apellido.ilike(search_term),
+            Cliente.documento.ilike(search_term),
+            Fraccionamiento.nombre.ilike(search_term)
+        ))
+
+    estado = request.args.get('estado', '')
+    if estado and estado != 'todos':
+        query = query.filter(Contrato.estado == estado)
+
+    contratos = query.order_by(Contrato.fecha_contrato.desc()).all()
+    return jsonify([c.to_dict() for c in contratos])
 
 @bp.route("/api/admin/contratos/<int:cid>", methods=["GET", "PATCH"])
 @login_required
 def api_contrato_detalle(cid):
     c = Contrato.query.get_or_404(cid)
+    
     if request.method == "PATCH":
         d = request.get_json(force=True)
-        if 'numero_contrato' in d: c.numero_contrato = d['numero_contrato']
-        if 'estado' in d: c.estado = d['estado']
-        c.observaciones = d.get('observaciones', c.observaciones)
+        cambios = []
+
+        if 'numero_contrato' in d and d['numero_contrato'] != c.numero_contrato:
+            cambios.append(f"N°: {c.numero_contrato} -> {d['numero_contrato']}")
+            c.numero_contrato = d['numero_contrato']
+            
+        if 'observaciones' in d:
+            c.observaciones = d.get('observaciones')
+
+        if 'estado' in d and d['estado'] != c.estado:
+            nuevo_estado = d['estado']
+            cambios.append(f"Estado: {c.estado} -> {nuevo_estado}")
+            c.estado = nuevo_estado
+            
+            if nuevo_estado in ['rescindido', 'inactivo']:
+                cuotas_eliminadas = Cuota.query.filter(
+                    Cuota.contrato_id == c.id, 
+                    Cuota.estado.in_(['pendiente', 'vencida'])
+                ).delete(synchronize_session=False)
+                
+                cambios.append(f"Se eliminaron {cuotas_eliminadas} cuotas pendientes.")
+                
+                if nuevo_estado == 'rescindido':
+                    c.lote.estado = 'disponible'
+                    cambios.append(f"Lote {c.lote.numero_lote} liberado.")
+
         db.session.commit()
-        return jsonify({"ok": True})
+        if cambios:
+            registrar_auditoria("EDITAR", "Contrato", f"ID {c.id}: " + "; ".join(cambios))
+
+        return jsonify({"ok": True, "message": "Contrato actualizado"})
+        
     return jsonify(c.to_dict())
 
 @bp.route("/admin/inventario/contrato_pdf/<int:contrato_id>")
@@ -202,7 +264,6 @@ def generar_contrato_pdf(contrato_id):
     contrato = Contrato.query.get_or_404(contrato_id)
     cliente = contrato.cliente
     lote = contrato.lote
-    
     empresa_nombre = get_param('EMPRESA_NOMBRE', 'INMOBILIARIA TU HOGAR S.A.')
     try: valor_letras = num2words(int(contrato.valor_total), lang='es').upper()
     except: valor_letras = str(int(contrato.valor_total))
@@ -212,8 +273,6 @@ def generar_contrato_pdf(contrato_id):
             self.set_font('Helvetica', 'B', 14); self.cell(0, 10, clean('CONTRATO DE COMPRA-VENTA'), 0, 1, 'C'); self.ln(5)
     
     pdf = PDF(); pdf.add_page(); pdf.set_font('Helvetica', '', 10)
-    
     txt = f"En la fecha {contrato.fecha_contrato}, entre {empresa_nombre} y {cliente.nombre} {cliente.apellido} con CI {cliente.documento}, acuerdan la venta del Lote {lote.numero_lote} Manzana {lote.manzana} por Gs. {int(contrato.valor_total):,} ({valor_letras})."
     pdf.multi_cell(0, 5, clean(txt))
-    
     return Response(pdf.output(dest='S').encode('latin-1'), mimetype="application/pdf")

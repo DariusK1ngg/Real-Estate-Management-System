@@ -1,41 +1,106 @@
 {% extends "base.html" %}
 
 {% block breadcrumb %}
-Gestión del Inventario / Movimientos (Contratos)
+Gestión de Inventario / Contratos
 {% endblock %}
 
 {% block content %}
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h2 class="card-title mb-0">Listado de Contratos</h2>
-        <a href="{{ url_for('ventas.ventas_movimientos_contratos_nuevo') }}" class="btn btn-primary">
-            + Nuevo Contrato
-        </a>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Listado de Contratos</h2>
+    <a href="{{ url_for('inventario.inventario_movimientos_contratos_nuevo') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Nuevo Contrato
+    </a>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <input type="text" id="filtro-texto" class="form-control" placeholder="Buscar por Cliente, CI o Fraccionamiento...">
+            </div>
+            <div class="col-md-3">
+                <select id="filtro-estado" class="form-select">
+                    <option value="todos">-- Todos los Estados --</option>
+                    <option value="activo">Activo</option>
+                    <option value="finalizado">Finalizado</option>
+                    <option value="rescindido">Rescindido</option>
+                    <option value="inactivo">Inactivo</option>
+                    <option value="cancelado">Cancelado</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary w-100" onclick="cargarContratos()">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </div>
+        </div>
     </div>
+</div>
+
+<div class="card">
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-hover">
+            <table class="table table-striped table-hover">
                 <thead>
                     <tr>
                         <th>N° Contrato</th>
-                        <th>Fecha</th>
                         <th>Cliente</th>
-                        <th>Lote (Mza - Lote)</th>
-                        <th>Fraccionamiento</th>
-                        <th>Valor Total (Gs.)</th>
-                        <th>Cuotas</th>
+                        <th>Lote</th>
                         <th>Estado</th>
+                        <th>Deuda Total</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
-                <tbody id="tbodyContratos">
-                    </tbody>
+                <tbody id="tabla-contratos">
+                </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalEditarContrato" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Contrato</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-contrato-id">
+                
+                <div class="mb-3">
+                    <label class="form-label">N° Contrato</label>
+                    <input type="text" id="edit-numero" class="form-control">
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Estado</label>
+                    <select id="edit-estado" class="form-select">
+                        <option value="activo">Activo</option>
+                        <option value="finalizado">Finalizado (Pagado)</option>
+                        <option value="rescindido">Rescindido (Elimina deuda y libera lote)</option>
+                        <option value="inactivo">Inactivo (Elimina deuda)</option>
+                        <option value="cancelado">Cancelado</option>
+                    </select>
+                    <small class="text-danger" id="aviso-deuda" style="display:none;">
+                        ⚠ Al seleccionar este estado, se eliminarán todas las cuotas pendientes y se liberará el lote (si es rescisión).
+                    </small>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Observaciones</label>
+                    <textarea id="edit-obs" class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarEdicionContrato()">Guardar Cambios</button>
+            </div>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/inventario_movimientos.js') }}"></script>
+<script src="{{ url_for('static', filename='js/contratos.js') }}"></script>
 {% endblock %}

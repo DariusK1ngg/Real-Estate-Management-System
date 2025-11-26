@@ -57,6 +57,15 @@ class Barrio(db.Model):
     ciudad_id = db.Column(db.Integer, db.ForeignKey('ciudades.id'), nullable=False)
     def to_dict(self): return {"id": self.id, "nombre": self.nombre, "ciudad_id": self.ciudad_id, "ciudad_nombre": self.ciudad.nombre}
 
+# --- NUEVO MODELO: SERVICIOS ---
+class Servicio(db.Model):
+    __tablename__ = 'servicios'
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(150), nullable=False)
+    precio_defecto = db.Column(db.Numeric(12, 2), default=0)
+    activo = db.Column(db.Boolean, default=True)
+    def to_dict(self): return {"id": self.id, "nombre": self.nombre, "precio_defecto": float(self.precio_defecto), "activo": self.activo}
+
 # --- SEGURIDAD ---
 
 roles_funcionarios = db.Table('roles_funcionarios',
@@ -139,7 +148,6 @@ class Lote(db.Model):
     estado = db.Column(Enum("disponible", "reservado", "vendido", name="estado_enum"), nullable=False, default="disponible")
     geojson = db.Column(db.JSON, nullable=False)
     fraccionamiento_id = db.Column(db.Integer, db.ForeignKey("fraccionamientos.id"), nullable=False)
-    # CAMBIO: Campo activo para Soft Delete
     activo = db.Column(db.Boolean, default=True, nullable=False)
     fraccionamiento = db.relationship("Fraccionamiento", backref=db.backref("lotes", lazy=True, cascade="all, delete-orphan"))
     contratos = db.relationship("Contrato", backref="lote", lazy=True)
@@ -178,7 +186,6 @@ class Cliente(db.Model):
     direccion = db.Column(db.Text, nullable=True)
     fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
     estado = db.Column(Enum("activo", "inactivo", name="estado_cliente_enum"), nullable=False, default="activo")
-    # CAMBIO: Campo activo para Soft Delete
     activo = db.Column(db.Boolean, default=True, nullable=False)
     contratos = db.relationship("Contrato", backref="cliente", lazy=True)
     def to_dict(self): 
@@ -196,7 +203,7 @@ class Contrato(db.Model):
     cantidad_cuotas = db.Column(db.Integer, nullable=False)
     valor_cuota = db.Column(db.Numeric(12, 2), nullable=False)
     tipo_contrato = db.Column(Enum("venta", "reserva", "alquiler", name="tipo_contrato_enum"), nullable=False, default="venta")
-    estado = db.Column(Enum("activo", "cancelado", "finalizado", name="estado_contrato_enum"), nullable=False, default="activo")
+    estado = db.Column(Enum("activo", "cancelado", "finalizado", "rescindido", "inactivo", name="estado_contrato_enum"), nullable=False, default="activo")
     observaciones = db.Column(db.Text, nullable=True)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
     cuotas = db.relationship("Cuota", backref="contrato", lazy=True, cascade="all, delete-orphan")
@@ -213,6 +220,8 @@ class Cuota(db.Model):
     fecha_pago = db.Column(db.Date, nullable=True)
     valor_pagado = db.Column(db.Numeric(12, 2), default=0.00)
     estado = db.Column(Enum("pendiente", "pagada", "vencida", name="estado_cuota_enum"), nullable=False, default="pendiente")
+    # CAMBIO: Campo tipo para distinguir Servicios
+    tipo = db.Column(db.String(20), default='cuota') # 'cuota' o 'servicio'
     observaciones = db.Column(db.Text, nullable=True)
     pagos = db.relationship("Pago", backref="cuota", lazy=True, cascade="all, delete-orphan")
     def to_dict(self): 
@@ -226,6 +235,7 @@ class Cuota(db.Model):
             "fecha_pago": self.fecha_pago.isoformat() if self.fecha_pago else None, 
             "valor_pagado": float(self.valor_pagado), 
             "estado": self.estado, 
+            "tipo": self.tipo,
             "observaciones": self.observaciones, 
             "dias_vencimiento": (self.fecha_vencimiento - date.today()).days if self.fecha_vencimiento else None
         }
@@ -401,15 +411,14 @@ class Cotizacion(db.Model):
     venta = db.Column(db.Numeric(10, 2), nullable=False)
     def to_dict(self): return {"id": self.id, "fecha": self.fecha.isoformat(), "moneda_origen": self.moneda_origen, "moneda_destino": self.moneda_destino, "compra": float(self.compra), "venta": float(self.venta)}
 
-# --- NUEVO: AUDITORÍA ---
 class AuditLog(db.Model):
     __tablename__ = 'audit_logs'
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('funcionarios.id'), nullable=True)
     usuario = db.relationship("Funcionario")
-    accion = db.Column(db.String(50), nullable=False) # Ej: "CREAR", "EDITAR", "ELIMINAR"
-    tabla = db.Column(db.String(50), nullable=False)  # Ej: "Lote", "Cliente"
-    detalle = db.Column(db.Text, nullable=True)       # Ej: "Cambió precio de 10 a 20"
+    accion = db.Column(db.String(50), nullable=False) 
+    tabla = db.Column(db.String(50), nullable=False) 
+    detalle = db.Column(db.Text, nullable=True)
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
     ip_address = db.Column(db.String(50), nullable=True)
 

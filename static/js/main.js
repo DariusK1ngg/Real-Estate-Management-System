@@ -1,22 +1,52 @@
+/* static/js/main.js */
+
 document.addEventListener('DOMContentLoaded', function () {
-    // === SEGURIDAD: CONFIGURACIÓN CSRF GLOBAL ===
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    // === 1. AUTO-FORMATO DE MONEDA (UX MEJORADA) ===
+    // Detecta cualquier input con la clase 'input-money' y le pone puntos de miles al escribir
+    document.body.addEventListener('input', function(e) {
+        if (e.target.classList.contains('input-money')) {
+            // 1. Guardar posición del cursor para no saltar al final
+            let cursorPosition = e.target.selectionStart;
+            let originalLength = e.target.value.length;
 
-    // Interceptor para inyectar el token CSRF en todas las peticiones fetch que no sean GET
-    const originalFetch = window.fetch;
-    window.fetch = function(url, options = {}) {
-        if (options.method && options.method.toUpperCase() !== 'GET') {
-            options.headers = options.headers || {};
-            if (options.headers instanceof Headers) {
-                options.headers.append('X-CSRFToken', csrfToken);
-            } else {
-                options.headers['X-CSRFToken'] = csrfToken;
+            // 2. Limpiar todo lo que no sea número
+            let rawValue = e.target.value.replace(/\D/g, '');
+            
+            if (rawValue === '') {
+                e.target.value = '';
+                return;
             }
-        }
-        return originalFetch(url, options);
-    };
 
-    // === LÓGICA DE MENÚ LATERAL (Submenús) ===
+            // 3. Formatear con puntos (Estándar Paraguay)
+            let formattedValue = new Intl.NumberFormat('es-PY').format(rawValue);
+            e.target.value = formattedValue;
+
+            // 4. Restaurar cursor (Ajuste fino para comodidad al borrar)
+            let newLength = formattedValue.length;
+            cursorPosition = cursorPosition + (newLength - originalLength);
+            try {
+                e.target.setSelectionRange(cursorPosition, cursorPosition);
+            } catch(err) {} // Ignorar en inputs type="number" (aunque usaremos text)
+        }
+    });
+
+    // === 2. CONFIGURACIÓN GLOBAL DE TOASTS (ALERTAS PEQUEÑAS) ===
+    if (typeof Swal !== 'undefined') {
+        window.Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
+            }
+        });
+    }
+
+    // === 3. LÓGICA DE MENÚ LATERAL ===
     const menuItems = document.querySelectorAll('.has-submenu > .nav-link');
     menuItems.forEach(item => {
         item.addEventListener('click', function (e) {
@@ -26,59 +56,34 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // === LÓGICA PARA PESTAÑAS PERSONALIZADAS ===
-    const tabLinks = document.querySelectorAll('.tab-link');
-    const tabContents = document.querySelectorAll('.tab-content');
-
-    if (tabLinks.length > 0) {
-        tabContents.forEach(content => {
-            if (!content.classList.contains('tab-pane')) {
-                 content.style.display = 'none';
+    // === 4. SEGURIDAD CSRF GLOBAL ===
+    const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+    if (csrfTokenMeta) {
+        const csrfToken = csrfTokenMeta.getAttribute('content');
+        const originalFetch = window.fetch;
+        window.fetch = function(url, options = {}) {
+            if (options.method && options.method.toUpperCase() !== 'GET') {
+                options.headers = options.headers || {};
+                if (options.headers instanceof Headers) {
+                    options.headers.append('X-CSRFToken', csrfToken);
+                } else {
+                    options.headers['X-CSRFToken'] = csrfToken;
+                }
             }
-        });
-
-        tabLinks.forEach(link => {
-            link.addEventListener('click', (e) => {
-                const tabId = link.dataset.tab;
-                if (!tabId) return;
-                
-                e.preventDefault();
-
-                tabContents.forEach(content => {
-                    if (!content.classList.contains('tab-pane')) {
-                        content.style.display = 'none';
-                    }
-                });
-                tabLinks.forEach(l => l.classList.remove('active'));
-
-                const activeTab = document.getElementById(tabId);
-                if (activeTab) activeTab.style.display = 'block';
-                
-                link.classList.add('active');
-            });
-        });
-
-        const firstTabLink = document.querySelector('.tab-link');
-        if (firstTabLink && firstTabLink.dataset.tab && !firstTabLink.classList.contains('active')) {
-             firstTabLink.click();
-        }
+            return originalFetch(url, options);
+        };
     }
 });
 
-// --- FUNCIONES GLOBALES PARA MANEJAR MODALES ---
-window.abrirModal = function(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) modal.style.display = 'block';
-}
+// === UTILIDADES GLOBALES PARA TODO EL SISTEMA ===
 
-window.cerrarModal = function(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) modal.style.display = 'none';
-}
+// Convierte "1.500.000" -> 1500000 (Para enviar al Backend)
+window.parseMoney = function(str) {
+    if (!str) return 0;
+    return parseInt(str.toString().replace(/\./g, '')) || 0;
+};
 
-window.addEventListener('click', function(event) {
-    if (event.target.classList.contains('close')) {
-        const modal = event.target.closest('.modal:not(.fade)');
-        if(modal) cerrarModal(modal.id);
-    }
-});
+// Convierte 1500000 -> "1.500.000" (Para mostrar en Inputs)
+window.formatMoney = function(num) {
+    return new Intl.NumberFormat('es-PY').format(num);
+};

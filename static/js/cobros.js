@@ -72,14 +72,13 @@ document.getElementById('selectFormaPago').addEventListener('change', function(e
     const divCuenta = document.getElementById('div-cuenta-destino');
     const selectCuenta = document.getElementById('selectCuentaDestino');
     
-    // Lógica simple: Si NO dice "efectivo", pedimos banco
     if (text.includes('efectivo') || e.target.value === "") {
         divCuenta.style.display = 'none';
         selectCuenta.required = false;
         selectCuenta.value = "";
     } else {
         divCuenta.style.display = 'block';
-        selectCuenta.required = true; // Obligatorio seleccionar cuenta
+        selectCuenta.required = true;
     }
 });
 
@@ -189,6 +188,7 @@ function seleccionarCliente(cliente) {
     cargarCuotasCliente(cliente.id);
 }
 
+// --- MODIFICADO: MUESTRA INTERÉS POR MORA ---
 async function cargarCuotasCliente(clienteId) {
     const tbody = document.getElementById('tbodyCuotas');
     tbody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando cuotas...</td></tr>';
@@ -206,13 +206,37 @@ async function cargarCuotasCliente(clienteId) {
             const fechaFormateada = fechaVenc.toLocaleDateString('es-ES', { timeZone: 'UTC' });
             const montoFormateado = cuota.valor_cuota.toLocaleString('es-PY');
             
+            // --- Lógica Visual de Mora ---
+            let infoInteres = '';
+            let claseMonto = '';
+            let btnClass = 'btn-success';
+            
+            // Si tiene interés calculado en el backend
+            if (cuota.interes_mora > 0) {
+                const interesFmt = cuota.interes_mora.toLocaleString('es-PY', {maximumFractionDigits: 0});
+                infoInteres = `<div class="text-danger fw-bold" style="font-size: 0.85em;">+ Mora: Gs. ${interesFmt}</div>`;
+                claseMonto = 'text-danger';
+                btnClass = 'btn-warning'; // Botón amarillo para indicar atención
+            }
+
+            const diasAtrasoTexto = cuota.dias_atraso > 0 
+                ? `<span class="badge bg-danger">${cuota.dias_atraso} días atraso</span>` 
+                : '<span class="badge bg-success">Al día</span>';
+
             tr.innerHTML = `
                 <td>${cuota.numero_contrato}</td>
                 <td>${cuota.numero_cuota}</td>
-                <td>${fechaFormateada}</td>
-                <td><strong>Gs. ${montoFormateado}</strong></td>
-                <td><span class="badge ${cuota.estado === 'pendiente' ? 'bg-warning' : 'bg-danger'}">${cuota.estado}</span></td>
-                <td><button class="btn btn-sm btn-success" onclick="abrirModalPago(${cuota.id}, ${cuota.valor_cuota})">Registrar Pago</button></td>
+                <td>${fechaFormateada} <br> ${diasAtrasoTexto}</td>
+                <td>
+                    <strong class="${claseMonto}">Gs. ${montoFormateado}</strong>
+                    ${infoInteres}
+                </td>
+                <td><span class="badge ${cuota.estado === 'pendiente' ? 'bg-secondary' : 'bg-danger'}">${cuota.estado}</span></td>
+                <td>
+                    <button class="btn btn-sm ${btnClass}" onclick="abrirModalPago(${cuota.id}, ${cuota.total_pagar})">
+                        Pagar Gs. ${cuota.total_pagar.toLocaleString('es-PY')}
+                    </button>
+                </td>
             `;
             tbody.appendChild(tr);
         });
@@ -221,13 +245,14 @@ async function cargarCuotasCliente(clienteId) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error al cargar la información.</td></tr>';
     }
 }
+// --------------------------------------------
 
 // --- MANEJO DE MODAL Y REGISTRO DE PAGO ---
-function abrirModalPago(cuotaId, monto) {
+function abrirModalPago(cuotaId, montoTotal) {
     const form = document.getElementById('formPago');
     form.reset();
     document.getElementById('pago-cuota-id').value = cuotaId;
-    document.getElementById('pago-monto').value = monto;
+    document.getElementById('pago-monto').value = montoTotal; // Carga el monto CON interés
     document.getElementById('pago-fecha').valueAsDate = new Date();
     
     modalPago.show();
@@ -238,7 +263,6 @@ async function registrarPago() {
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
 
-    // Convertir ID a entero
     if(data.forma_pago_id) data.forma_pago_id = parseInt(data.forma_pago_id);
 
     try {
@@ -250,21 +274,12 @@ async function registrarPago() {
         const result = await response.json();
         
         if (response.ok) {
-            // 1. Cerrar el modal primero
             modalPago.hide();
-            
-            // 2. Mensaje de éxito
-            // alert(result.message); // Opcional: puedes quitarlo si el PDF ya es suficiente confirmación
-            
-            // 3. ABRIR EL RECIBO PDF AUTOMÁTICAMENTE
             if (result.pago_id) {
                 window.open(`/admin/cobros/recibo/${result.pago_id}`, '_blank');
             }
-
-            // 4. Actualizar la tabla de cuotas y la caja
             if (clienteSeleccionadoId) cargarCuotasCliente(clienteSeleccionadoId);
             checkCajaEstado();
-            
         } else {
             alert(`Error: ${result.error}`);
         }

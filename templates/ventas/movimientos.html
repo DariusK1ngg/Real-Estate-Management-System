@@ -1,125 +1,33 @@
 {% extends "base.html" %}
 
 {% block breadcrumb %}
-Gestión de Ventas / Movimientos
+Gestión de Ventas / Historial de Servicios
 {% endblock %}
 
 {% block content %}
-<div id="modalFactura" class="modal fade" tabindex="-1" aria-labelledby="modalFacturaLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title" id="modalFacturaLabel">Cargar Nueva Factura</h3>
-                <button type="button" class="btn-close" onclick="cerrarModalFactura()" aria-label="Close"></button>
-            </div>
-            
-            <div class="modal-body">
-                <form id="formFactura">
-                    <div class="factura-header-grid">
-                        <div class="form-group">
-                            <label for="cliente_id" class="form-label">Cliente</label>
-                            <select id="cliente_id" name="cliente_id" class="form-control" required></select>
-                        </div>
-                        <div class="form-group">
-                            <label for="vendedor_id" class="form-label">Vendedor</label>
-                            <select id="vendedor_id" name="vendedor_id" class="form-control"></select>
-                        </div>
-                        <div class="form-group">
-                            <label for="numero_factura" class="form-label">Número de Factura</label>
-                            <input type="text" id="numero_factura" name="numero_factura" class="form-control" placeholder="Automático" disabled>
-                        </div>
-                        <div class="form-group">
-                            <label for="fecha_venta" class="form-label">Fecha de Venta</label>
-                            <input type="date" id="fecha_venta" name="fecha_venta" class="form-control" required>
-                        </div>
-                    </div>
-
-                    <hr>
-                    <h4 class="mb-3">Detalle de la Factura</h4>
-                    
-                    <div class="detalle-controls-container">
-                        <div class="form-group col-item">
-                            <label class="form-label">Ítem (Lote o Servicio)</label>
-                            <select id="item-lote" class="form-control"></select>
-                            <input type="text" id="item-descripcion-manual" class="form-control input-descripcion-manual" placeholder="Descripción del servicio...">
-                        </div>
-                        <div class="form-group col-cantidad">
-                            <label class="form-label">Cantidad</label>
-                            <input type="number" id="item-cantidad" class="form-control" value="1" min="1">
-                        </div>
-                        <div class="form-group col-precio">
-                            <label class="form-label">Precio Unit.</label>
-                            <input type="number" id="item-precio" class="form-control" step="0.01">
-                        </div>
-                        <div class="form-group col-boton">
-                             <button type="button" class="btn btn-success" onclick="agregarItemDetalle()">
-                                <i class="fas fa-plus"></i> Agregar
-                             </button>
-                        </div>
-                    </div>
-
-                    <div class="tabla-detalles-container">
-                        <table class="table table-striped mb-0 tabla-detalles">
-                            <thead>
-                                <tr>
-                                    <th>Descripción</th>
-                                    <th>Cant.</th>
-                                    <th>P. Unitario</th>
-                                    <th>Subtotal</th>
-                                    <th class="col-accion"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="tbodyDetalleFactura">
-                                </tbody>
-                            <tfoot>
-                                <tr class="factura-footer-total">
-                                    <th colspan="3" class="text-end">TOTAL:</th>
-                                    <th id="factura-total">0.00</th>
-                                    <th></th>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                </form>
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="cerrarModalFactura()">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="guardarFactura()">Guardar Factura</button>
-            </div>
-        </div>
-    </div>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Historial de Servicios Cargados</h2>
+    <a href="{{ url_for('ventas.ventas_nueva') }}" class="btn btn-success">
+        <i class="fas fa-plus-circle"></i> Cargar Nuevo Servicio
+    </a>
 </div>
 
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h2 class="card-title mb-0">Movimientos de Ventas</h2>
-        <div class="btn-group">
-            <a href="{{ url_for('ventas.ventas_movimientos_contratos_nuevo') }}" class="btn btn-success">Nuevo Contrato</a>
-            <button class="btn btn-primary" onclick="abrirModalFactura()">Cargar Factura</button>
-            <button class="btn btn-info" onclick="cargarVentas()">Actualizar Lista</button>
-        </div>
-    </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead>
+            <table class="table table-striped table-hover" id="tablaVentas">
+                <thead class="table-dark">
                     <tr>
-                        <th>Factura</th>
                         <th>Fecha</th>
-                        <th>Cliente</th>
-                        <th>Vendedor</th>
-                        <th>Total</th>
+                        <th>ID Ref.</th>
+                        <th>Cliente / Detalle</th>
+                        <th class="text-end">Monto</th>
                         <th>Estado</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
-                <tbody id="tbodyVentas">
-                    <tr>
-                        <td colspan="7" class="text-center text-muted py-4">
-                            Cargando ventas...
-                        </td>
-                    </tr>
+                <tbody>
+                    <tr><td colspan="6" class="text-center">Cargando...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -127,14 +35,6 @@ Gestión de Ventas / Movimientos
 </div>
 {% endblock %}
 
-{% block extra_css %}
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
-<link rel="stylesheet" href="{{ url_for('static', filename='css/ventas.css') }}">
-{% endblock %}
-
 {% block extra_js %}
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="{{ url_for('static', filename='js/ventas.js') }}"></script>
 {% endblock %}
