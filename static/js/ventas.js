@@ -273,7 +273,7 @@ function initCargaDeuda() {
             items: items
         };
 
-        fetch('/api/admin/ventas/cargar-deuda', {
+        fetch('/api/admin/ventas', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -314,55 +314,73 @@ function calcularTotalGeneral() {
 }
 
 // ==========================================
-// C. HISTORIAL Y ELIMINACIÓN (CORREGIDO PARA DATATABLES)
+// C. HISTORIAL Y ELIMINACIÓN (CORREGIDO)
 // ==========================================
 async function cargarHistorialServicios() {
     const tableId = '#tablaVentas';
     const tbody = document.querySelector(tableId + ' tbody');
     if (!tbody) return;
 
-    // 1. Si ya es DataTable, destruir la instancia antes de modificar el HTML
+    // 1. Destruir instancia previa si existe para limpiar el DOM
     if ($.fn.DataTable.isDataTable(tableId)) {
         $(tableId).DataTable().destroy();
     }
 
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando...</td></tr>';
+    // 2. Mostrar mensaje de carga (Sin inicializar DT todavía)
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center">Cargando datos...</td></tr>';
 
     try {
         const res = await fetch('/api/admin/ventas');
         const datos = await res.json();
-        tbody.innerHTML = '';
         
-        if (datos.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No hay registros.</td></tr>';
-            return;
+        // Limpiamos el body antes de repoblar
+        tbody.innerHTML = '';
+
+        // Si hay datos, construimos las filas
+        if (datos.length > 0) {
+            datos.forEach(item => {
+                const tr = document.createElement('tr');
+                let badge = item.estado === 'pagada' ? 
+                    '<span class="badge bg-success">COBRADO</span>' : 
+                    '<span class="badge bg-warning text-dark">PENDIENTE</span>';
+                
+                let btnEliminar = item.estado === 'pendiente' ? 
+                    `<button class="btn btn-sm btn-outline-danger" onclick="eliminarCarga(${item.id})"><i class="fas fa-trash"></i></button>` : 
+                    '';
+
+                // Usamos formatMoney global si existe, sino un fallback simple
+                let monto = typeof formatMoney === 'function' ? formatMoney(item.total) : item.total;
+
+                tr.innerHTML = `
+                    <td>${item.fecha}</td>
+                    <td>${item.numero}</td>
+                    <td><strong>${item.cliente_nombre}</strong><br><small class="text-muted">${item.concepto}</small></td>
+                    <td>${item.cliente_documento || '-'}</td>
+                    <td class="text-end">Gs. ${monto}</td>
+                    <td>${badge}</td>
+                    <td class="text-center">${btnEliminar}</td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
 
-        datos.forEach(item => {
-            const tr = document.createElement('tr');
-            let badge = item.estado === 'pagada' ? '<span class="badge bg-success">COBRADO</span>' : '<span class="badge bg-warning text-dark">PENDIENTE</span>';
-            let btnEliminar = item.estado === 'pendiente' ? `<button class="btn btn-sm btn-outline-danger" onclick="eliminarCarga(${item.id})"><i class="fas fa-trash"></i></button>` : '';
-
-            tr.innerHTML = `
-                <td>${item.fecha}</td>
-                <td>${item.numero}</td>
-                <td><strong>${item.cliente_nombre}</strong><br><small class="text-muted">${item.concepto}</small></td>
-                <td class="text-end">Gs. ${formatMoney(item.total)}</td>
-                <td>${badge}</td>
-                <td>${btnEliminar}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-
-        // 2. Re-inicializar DataTable
+        // 3. Inicializar DataTables
+        // DataTables manejará automáticamente el mensaje de "No hay datos" si el tbody está vacío
         $(tableId).DataTable({
-            language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' },
-            order: [[0, 'desc']] // Ordenar por fecha descendente
+            language: { 
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json',
+                emptyTable: "No hay registros de ventas/servicios cargados."
+            },
+            order: [[0, 'desc']], // Ordenar por fecha descendente
+            responsive: true,
+            columnDefs: [
+                { targets: 6, orderable: false } // No ordenar columna de acciones
+            ]
         });
 
     } catch (e) { 
         console.error(e); 
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error de conexión</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error de conexión al cargar historial.</td></tr>';
     }
 }
 

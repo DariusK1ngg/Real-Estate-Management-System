@@ -29,6 +29,62 @@ def cobros_reportes():
 def cobros_definiciones(): 
     return render_template("cobros/definiciones.html")
 
+# --- NUEVA FUNCIÓN AGREGADA PARA CORREGIR EL ERROR DE CONEXIÓN ---
+@bp.route("/api/cobros/historial")
+@login_required
+def api_cobros_historial():
+    # Filtros de fecha opcionales
+    fecha_inicio = request.args.get('fecha_inicio')
+    fecha_fin = request.args.get('fecha_fin')
+    
+    query = Pago.query
+    
+    if fecha_inicio:
+        try:
+            f_ini = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            query = query.filter(Pago.fecha_pago >= f_ini)
+        except: pass
+
+    if fecha_fin:
+        try:
+            f_fin = datetime.strptime(fecha_fin, '%Y-%m-%d')
+            query = query.filter(Pago.fecha_pago <= f_fin)
+        except: pass
+        
+    # Ordenar por fecha descendente
+    pagos = query.order_by(Pago.fecha_pago.desc()).all()
+    
+    data = []
+    for p in pagos:
+        # Construir descripción del cliente y concepto de forma segura
+        cliente_nombre = "N/A"
+        concepto = "Pago General"
+        
+        if p.contrato and p.contrato.cliente:
+            cliente_nombre = f"{p.contrato.cliente.nombre} {p.contrato.cliente.apellido}"
+        
+        if p.cuota:
+            concepto = f"Cuota {p.cuota.numero_cuota} ({p.cuota.tipo})"
+            
+        data.append({
+            'id': p.id,
+            'fecha': p.fecha_pago.strftime('%d/%m/%Y'),
+            'recibo': p.id,  # Usamos ID como recibo si no hay nro específico
+            'cliente': cliente_nombre,
+            'concepto': concepto,
+            'monto': float(p.monto),
+            'forma_pago': p.forma_pago.nombre if p.forma_pago else "N/A",
+            'estado': 'Confirmado', # Los pagos registrados ya están confirmados
+            'acciones': f"""
+                <a href="/admin/cobros/recibo/{p.id}" target="_blank" class="btn btn-sm btn-info" title="Imprimir Recibo">
+                    <i class="fas fa-print"></i>
+                </a>
+            """
+        })
+
+    # IMPORTANTE: Envolver en "data" para que DataTables funcione
+    return jsonify({"data": data})
+
 @bp.route("/api/admin/clientes/<int:cliente_id>/cuotas")
 @login_required
 def api_get_cuotas_por_cliente(cliente_id):
@@ -45,7 +101,6 @@ def api_get_cuotas_por_cliente(cliente_id):
         dias_atraso = (today - c.fecha_vencimiento).days
         interes = 0.0
         
-        # Mismo cálculo visual que usaremos para validar en el pago
         if dias_atraso > 90 and c.tipo == 'cuota': 
             tasa_diaria = 0.0275 
             interes = float(c.valor_cuota) * tasa_diaria * dias_atraso
@@ -63,7 +118,6 @@ def api_get_cuotas_por_cliente(cliente_id):
 def api_registrar_pago():
     data = request.get_json(force=True)
     
-    # 1. Validaciones básicas de entrada
     try:
         forma_id = int(data.get("forma_pago_id"))
         monto_recibido = Decimal(str(data["monto"]))
@@ -72,47 +126,37 @@ def api_registrar_pago():
     except (ValueError, TypeError):
         return jsonify({"error": "Datos de pago inválidos"}), 400
 
-    # 2. Obtener y Validar Cuota
     cuota = Cuota.query.get(int(data["cuota_id"]))
     if not cuota or cuota.estado == 'pagada': 
         return jsonify({"error": "Cuota inválida o ya pagada"}), 400
     
-    # ---------------------------------------------------------
-    # 3. LÓGICA DE SEGURIDAD: Recálculo de Interés (Backend)
-    # ---------------------------------------------------------
     dias_atraso = (fecha_pago_date - cuota.fecha_vencimiento).days
     interes_calculado = Decimal(0)
     
-    # Aplicar Mora solo si supera los 90 días (Regla de Negocio)
     if dias_atraso > 90 and cuota.tipo == 'cuota':
-        tasa_diaria = Decimal("0.0275") # Tasa diaria (ajustar si es necesario)
+        tasa_diaria = Decimal("0.0275") 
         interes_calculado = cuota.valor_cuota * tasa_diaria * dias_atraso
 
     total_minimo_requerido = cuota.valor_cuota + interes_calculado
     
-    # Validamos que el monto cubra el total (con un pequeño margen de 50 Gs por redondeo)
     if monto_recibido < (total_minimo_requerido - Decimal(50)):
         return jsonify({
             "error": "Monto insuficiente. Se detectaron intereses por mora.",
             "detalle": f"La deuda total es {total_minimo_requerido:,.0f} (Cuota: {cuota.valor_cuota:,.0f} + Mora: {interes_calculado:,.0f})",
             "dias_atraso": dias_atraso
         }), 400
-    # ---------------------------------------------------------
 
-    # 4. Procesamiento de Caja / Banco
     cuenta_bancaria_id = data.get("cuenta_bancaria_id")
     if cuenta_bancaria_id:
         cuenta_bancaria_id = int(cuenta_bancaria_id)
 
     caja = None
-    if forma_id == 1: # Efectivo
+    if forma_id == 1: 
         caja_id = session.get("caja_id")
         if not caja_id: return jsonify({"error": "Caja no abierta en sesión"}), 403
         caja = Caja.query.get(caja_id)
         if not caja or not caja.abierta: return jsonify({"error": "Caja cerrada"}), 403
 
-    # 5. Registro del Pago
-    # Si hay mora, la agregamos a la observación automáticamente
     obs_sistema = data.get("observaciones", "")
     if interes_calculado > 0:
         obs_sistema += f" [Incluye mora: {interes_calculado:,.0f} Gs por {dias_atraso} días de atraso]"
@@ -130,12 +174,10 @@ def api_registrar_pago():
     )
     db.session.add(pago)
     
-    # Actualizar estado de la cuota
     cuota.estado = 'pagada'
     cuota.fecha_pago = pago.fecha_pago
     cuota.valor_pagado = monto_recibido 
     
-    # Auditoría y Movimientos de Dinero
     audit_detalle = f"Pago cuota {cuota.numero_cuota} ({cuota.contrato.numero_contrato}). Total: {monto_recibido:,.0f}"
 
     if forma_id == 1 and caja:

@@ -1,8 +1,9 @@
-from flask import Blueprint, request, jsonify, render_template
+from flask import Blueprint, request, jsonify, render_template, Response
 from flask_login import login_required
 from extensions import db
 from models import Gasto, Venta, Cliente, Funcionario, MovimientoCaja, DepositoBancario, Lote, ListaPrecioLote, Fraccionamiento, Contrato, Cuota, Pago
 from datetime import datetime, timedelta
+from fpdf import FPDF
 
 bp = Blueprint('reportes', __name__)
 
@@ -137,3 +138,143 @@ def api_reporte_estado_cuenta():
             "historial_pagos": [p.to_dict() for p in pagos]
         })
     return jsonify(res)
+
+@bp.route("/admin/reportes/liquidacion-propietario", methods=["GET"])
+@login_required
+def reporte_liquidacion_view():
+    """Muestra el formulario para sacar el reporte."""
+    fraccionamientos = Fraccionamiento.query.order_by(Fraccionamiento.nombre).all()
+    return render_template("reportes/liquidacion_propietario.html", fraccionamientos=fraccionamientos)
+
+@bp.route("/admin/reportes/liquidacion-propietario/pdf", methods=["POST"])
+@login_required
+def generar_liquidacion_pdf():
+    """Genera el PDF con los cálculos de comisión."""
+    frac_id = request.form.get('fraccionamiento_id')
+    fecha_ini = request.form.get('fecha_desde')
+    fecha_fin = request.form.get('fecha_hasta')
+
+    # 1. Validaciones
+    if not frac_id or not fecha_ini or not fecha_fin:
+        return "Faltan datos para generar el reporte", 400
+
+    fraccionamiento = Fraccionamiento.query.get_or_404(frac_id)
+    f_desde = datetime.strptime(fecha_ini, "%Y-%m-%d")
+    f_hasta = datetime.strptime(fecha_fin, "%Y-%m-%d") + timedelta(days=1) # Incluir todo el día final
+
+    # 2. Consultar Pagos de ese Fraccionamiento en el rango de fechas
+    # Join: Pago -> Contrato -> Lote -> Fraccionamiento
+    pagos = Pago.query.join(Contrato).join(Lote).filter(
+        Lote.fraccionamiento_id == frac_id,
+        Pago.fecha_pago >= f_desde,
+        Pago.fecha_pago < f_hasta
+    ).order_by(Pago.fecha_pago).all()
+
+    # 3. Configurar PDF
+    class PDF(FPDF):
+        def header(self):
+            self.set_font('Arial', 'B', 14)
+            self.cell(0, 10, 'LIQUIDACIÓN DE PROPIETARIO', 0, 1, 'C')
+            self.set_font('Arial', '', 10)
+            self.cell(0, 10, f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}", 0, 1, 'R')
+            self.line(10, 30, 200, 30)
+            self.ln(5)
+
+        def footer(self):
+            self.set_y(-15)
+            self.set_font('Arial', 'I', 8)
+            self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'C')
+
+    pdf = PDF('L', 'mm', 'A4') # Horizontal para que quepan las columnas
+    pdf.add_page()
+    pdf.set_font('Arial', '', 11)
+
+    # 4. Datos del Encabezado
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(40, 10, "Fraccionamiento:", 0, 0)
+    pdf.set_font('Arial', '', 12)
+    pdf.cell(0, 10, fraccionamiento.nombre.upper(), 0, 1)
+    
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(40, 8, f"Período:", 0, 0)
+    pdf.set_font('Arial', '', 11)
+    pdf.cell(0, 8, f"Del {fecha_ini} al {fecha_fin}", 0, 1)
+    
+    pdf.cell(0, 5, "", 0, 1) # Espacio
+
+    # 5. Tabla de Detalles
+    # Encabezados
+    pdf.set_fill_color(200, 220, 255)
+    pdf.set_font('Arial', 'B', 9)
+    
+    # Definir anchos
+    w_fecha = 25
+    w_cliente = 50
+    w_lote = 25
+    w_cuota = 15
+    w_monto = 30
+    w_inmob = 35
+    w_prop = 35
+    
+    pdf.cell(w_fecha, 8, "Fecha", 1, 0, 'C', 1)
+    pdf.cell(w_cliente, 8, "Cliente", 1, 0, 'C', 1)
+    pdf.cell(w_lote, 8, "Lote", 1, 0, 'C', 1)
+    pdf.cell(w_cuota, 8, "N.Cuota", 1, 0, 'C', 1)
+    pdf.cell(w_monto, 8, "Monto Pagado", 1, 0, 'C', 1)
+    pdf.cell(w_inmob, 8, f"Inmob. ({fraccionamiento.comision_inmobiliaria}%)", 1, 0, 'C', 1)
+    pdf.cell(w_prop, 8, f"Prop. ({fraccionamiento.comision_propietario}%)", 1, 1, 'C', 1)
+
+    pdf.set_font('Arial', '', 9)
+    
+    total_recaudado = 0
+    total_inmobiliaria = 0
+    total_propietario = 0
+
+    for p in pagos:
+        # Cálculos Matemáticos
+        monto = float(p.monto)
+        # Porcentajes definidos en el fraccionamiento
+        com_inmob_pct = float(fraccionamiento.comision_inmobiliaria or 0) / 100
+        com_prop_pct = float(fraccionamiento.comision_propietario or 0) / 100
+        
+        monto_inmob = monto * com_inmob_pct
+        monto_prop = monto * com_prop_pct
+        
+        # Sumar totales
+        total_recaudado += monto
+        total_inmobiliaria += monto_inmob
+        total_propietario += monto_prop
+
+        # Datos visuales
+        cliente_nom = f"{p.contrato.cliente.nombre} {p.contrato.cliente.apellido}"
+        lote_nom = f"Mz{p.contrato.lote.manzana}-L{p.contrato.lote.numero_lote}"
+        n_cuota = str(p.cuota.numero_cuota) if p.cuota else "Ent" # Ent = Entrega inicial
+        
+        pdf.cell(w_fecha, 7, p.fecha_pago.strftime("%d/%m/%Y"), 1)
+        pdf.cell(w_cliente, 7, cliente_nom[:23], 1) # Cortar nombres largos
+        pdf.cell(w_lote, 7, lote_nom, 1, 0, 'C')
+        pdf.cell(w_cuota, 7, n_cuota, 1, 0, 'C')
+        pdf.cell(w_monto, 7, f"{int(monto):,}".replace(',', '.'), 1, 0, 'R')
+        pdf.cell(w_inmob, 7, f"{int(monto_inmob):,}".replace(',', '.'), 1, 0, 'R')
+        pdf.cell(w_prop, 7, f"{int(monto_prop):,}".replace(',', '.'), 1, 1, 'R')
+
+    # 6. Totales Finales
+    pdf.ln(5)
+    pdf.set_font('Arial', 'B', 10)
+    pdf.cell(w_fecha + w_cliente + w_lote + w_cuota, 8, "TOTALES GENERALES:", 0, 0, 'R')
+    pdf.cell(w_monto, 8, f"{int(total_recaudado):,}".replace(',', '.'), 1, 0, 'R')
+    pdf.cell(w_inmob, 8, f"{int(total_inmobiliaria):,}".replace(',', '.'), 1, 0, 'R')
+    pdf.cell(w_prop, 8, f"{int(total_propietario):,}".replace(',', '.'), 1, 1, 'R')
+    
+    # Resumen de Liquidación
+    pdf.ln(10)
+    pdf.set_fill_color(240, 240, 240)
+    pdf.cell(0, 10, "RESUMEN A LIQUIDAR", 1, 1, 'C', 1)
+    
+    pdf.cell(100, 10, "A FAVOR DE LA INMOBILIARIA:", 1)
+    pdf.cell(0, 10, f"Gs. {int(total_inmobiliaria):,}".replace(',', '.'), 1, 1, 'R')
+    
+    pdf.cell(100, 10, "A FAVOR DEL PROPIETARIO:", 1)
+    pdf.cell(0, 10, f"Gs. {int(total_propietario):,}".replace(',', '.'), 1, 1, 'R')
+
+    return Response(pdf.output(dest='S').encode('latin-1'), mimetype="application/pdf")

@@ -3,7 +3,7 @@ from flask_login import login_required
 from extensions import db
 from models import FormaPago, TipoCliente, TipoComprobante, Profesion, TipoDocumento, Ciudad, Barrio, CondicionPago, Impuesto, Talonario, ParametroSistema, Cotizacion, Aplicacion, Role
 from datetime import datetime
-from utils import admin_required, role_required, registrar_auditoria # <--- IMPORTAR
+from utils import admin_required, role_required, registrar_auditoria
 
 bp = Blueprint('base', __name__)
 
@@ -29,7 +29,7 @@ def create_api_for_simple_model(model_class, endpoint):
                 new_obj = model_class(nombre=data['nombre'])
                 
             db.session.add(new_obj); db.session.commit()
-            registrar_auditoria("CREAR", endpoint, f"Nuevo registro: {new_obj.nombre}") # <--- AUDITORIA AUTOMÁTICA
+            registrar_auditoria("CREAR", endpoint, f"Nuevo registro: {new_obj.nombre}")
             return jsonify(new_obj.to_dict()), 201
         
         query = model_class.query
@@ -38,22 +38,30 @@ def create_api_for_simple_model(model_class, endpoint):
             
         return jsonify([obj.to_dict() for obj in query.all()])
 
-    @bp.route(f"/api/admin/{endpoint}/<int:obj_id>", methods=["PUT", "DELETE"], endpoint=f"api_{endpoint}_detalle")
+    # CORRECCIÓN 1: Se agregó "GET" a los métodos permitidos
+    @bp.route(f"/api/admin/{endpoint}/<int:obj_id>", methods=["GET", "PUT", "DELETE"], endpoint=f"api_{endpoint}_detalle")
     @login_required
     def api_simple_model_detalle(obj_id):
         obj = model_class.query.get_or_404(obj_id)
+        
+        # CORRECCIÓN 2: Lógica para devolver el objeto cuando se solicita con GET
+        if request.method == "GET":
+            return jsonify(obj.to_dict())
+
         if request.method == "PUT":
             data = request.json
             if 'nombre' in data: obj.nombre = data.get('nombre', obj.nombre)
             if endpoint == 'barrios' and 'ciudad_id' in data: obj.ciudad_id = data['ciudad_id']
             db.session.commit()
-            registrar_auditoria("EDITAR", endpoint, f"Edición ID {obj_id}") # <--- AUDITORIA AUTOMÁTICA
+            registrar_auditoria("EDITAR", endpoint, f"Edición ID {obj_id}")
             return jsonify(obj.to_dict())
+            
         if request.method == "DELETE":
             db.session.delete(obj); db.session.commit()
-            registrar_auditoria("ELIMINAR", endpoint, f"Eliminación ID {obj_id}") # <--- AUDITORIA AUTOMÁTICA
+            registrar_auditoria("ELIMINAR", endpoint, f"Eliminación ID {obj_id}")
             return jsonify({"message": "Eliminado correctamente"})
 
+# Creación dinámica de endpoints
 create_api_for_simple_model(FormaPago, 'formas-pago')
 create_api_for_simple_model(TipoCliente, 'tipos-cliente')
 create_api_for_simple_model(TipoComprobante, 'tipos-comprobante')
@@ -70,25 +78,32 @@ def api_condiciones_pago():
         data = request.json
         new_obj = CondicionPago(nombre=data['nombre'], dias=data.get('dias', 0))
         db.session.add(new_obj); db.session.commit()
-        registrar_auditoria("CREAR", "CondicionPago", f"Nueva: {new_obj.nombre}") # <--- AUDITORIA
+        registrar_auditoria("CREAR", "CondicionPago", f"Nueva: {new_obj.nombre}")
         return jsonify(new_obj.to_dict()), 201
     return jsonify([obj.to_dict() for obj in CondicionPago.query.all()])
 
-@bp.route("/api/admin/condiciones-pago/<int:obj_id>", methods=["PUT", "DELETE"])
+# CORRECCIÓN 3: Se habilitó GET para condiciones de pago
+@bp.route("/api/admin/condiciones-pago/<int:obj_id>", methods=["GET", "PUT", "DELETE"])
 @login_required
 @role_required('Admin', 'Cajero')
 def api_condicion_pago_detalle(obj_id):
     obj = CondicionPago.query.get_or_404(obj_id)
+    
+    # CORRECCIÓN 4: Retorno de datos en GET
+    if request.method == "GET":
+        return jsonify(obj.to_dict())
+
     if request.method == "PUT":
         data = request.json
         obj.nombre = data.get('nombre', obj.nombre)
         obj.dias = data.get('dias', obj.dias)
         db.session.commit()
-        registrar_auditoria("EDITAR", "CondicionPago", f"Edición ID {obj_id}") # <--- AUDITORIA
+        registrar_auditoria("EDITAR", "CondicionPago", f"Edición ID {obj_id}")
         return jsonify(obj.to_dict())
+        
     if request.method == "DELETE":
         db.session.delete(obj); db.session.commit()
-        registrar_auditoria("ELIMINAR", "CondicionPago", f"Baja ID {obj_id}") # <--- AUDITORIA
+        registrar_auditoria("ELIMINAR", "CondicionPago", f"Baja ID {obj_id}")
         return jsonify({"message": "Eliminado correctamente"})
 
 @bp.route("/api/admin/impuestos", methods=["GET", "POST"])
@@ -99,11 +114,11 @@ def api_impuestos():
         data = request.json
         obj = Impuesto(nombre=data['nombre'], porcentaje=data['porcentaje'])
         db.session.add(obj); db.session.commit()
-        registrar_auditoria("CREAR", "Impuesto", f"Nuevo: {obj.nombre}") # <--- AUDITORIA
+        registrar_auditoria("CREAR", "Impuesto", f"Nuevo: {obj.nombre}")
         return jsonify(obj.to_dict()), 201
     return jsonify([o.to_dict() for o in Impuesto.query.all()])
 
-@bp.route("/api/admin/impuestos/<int:obj_id>", methods=["PUT", "DELETE"])
+@bp.route("/api/admin/impuestos/<int:obj_id>", methods=["GET", "PUT", "DELETE"])
 @login_required
 @role_required('Admin')
 def api_impuesto_detalle(obj_id):
@@ -115,11 +130,11 @@ def api_impuesto_detalle(obj_id):
         obj.nombre = data.get('nombre', obj.nombre)
         obj.porcentaje = data.get('porcentaje', obj.porcentaje)
         db.session.commit()
-        registrar_auditoria("EDITAR", "Impuesto", f"Edición ID {obj_id}") # <--- AUDITORIA
+        registrar_auditoria("EDITAR", "Impuesto", f"Edición ID {obj_id}")
         return jsonify(obj.to_dict())
     if request.method == "DELETE":
         db.session.delete(obj); db.session.commit()
-        registrar_auditoria("ELIMINAR", "Impuesto", f"Baja ID {obj_id}") # <--- AUDITORIA
+        registrar_auditoria("ELIMINAR", "Impuesto", f"Baja ID {obj_id}")
         return jsonify({"message": "Eliminado correctamente"})
 
 @bp.route("/api/admin/talonarios", methods=["GET", "POST"])
@@ -140,11 +155,11 @@ def api_talonarios():
             activo=data.get('activo', True)
         )
         db.session.add(obj); db.session.commit()
-        registrar_auditoria("CREAR", "Talonario", f"Nuevo Talonario {obj.timbrado}") # <--- AUDITORIA
+        registrar_auditoria("CREAR", "Talonario", f"Nuevo Talonario {obj.timbrado}")
         return jsonify(obj.to_dict()), 201
     return jsonify([o.to_dict() for o in Talonario.query.order_by(Talonario.activo.desc(), Talonario.fecha_fin_vigencia.desc()).all()])
 
-@bp.route("/api/admin/talonarios/<int:obj_id>", methods=["PUT", "DELETE"])
+@bp.route("/api/admin/talonarios/<int:obj_id>", methods=["GET", "PUT", "DELETE"])
 @login_required
 @role_required('Admin')
 def api_talonario_detalle(obj_id):
@@ -163,11 +178,11 @@ def api_talonario_detalle(obj_id):
         obj.numero_fin = data.get('numero_fin', obj.numero_fin)
         obj.activo = data.get('activo', obj.activo)
         db.session.commit()
-        registrar_auditoria("EDITAR", "Talonario", f"Edición ID {obj_id}") # <--- AUDITORIA
+        registrar_auditoria("EDITAR", "Talonario", f"Edición ID {obj_id}")
         return jsonify(obj.to_dict())
     if request.method == "DELETE":
         db.session.delete(obj); db.session.commit()
-        registrar_auditoria("ELIMINAR", "Talonario", f"Baja ID {obj_id}") # <--- AUDITORIA
+        registrar_auditoria("ELIMINAR", "Talonario", f"Baja ID {obj_id}")
         return jsonify({"message": "Eliminado correctamente"})
 
 @bp.route("/api/admin/parametros", methods=["GET", "POST"])
@@ -179,7 +194,7 @@ def api_parametros_sistema():
             return jsonify({"error": "Esa clave ya existe"}), 400
         param = ParametroSistema(clave=data['clave'], valor=data['valor'], descripcion=data.get('descripcion'))
         db.session.add(param); db.session.commit()
-        registrar_auditoria("CREAR", "Parametro", f"Nuevo: {param.clave}") # <--- AUDITORIA
+        registrar_auditoria("CREAR", "Parametro", f"Nuevo: {param.clave}")
         return jsonify(param.to_dict()), 201
     return jsonify([p.to_dict() for p in ParametroSistema.query.all()])
 
@@ -192,11 +207,11 @@ def api_parametro_sistema_detalle(pid):
         param.valor = data.get('valor', param.valor)
         param.descripcion = data.get('descripcion', param.descripcion)
         db.session.commit()
-        registrar_auditoria("EDITAR", "Parametro", f"Cambio en {param.clave}") # <--- AUDITORIA
+        registrar_auditoria("EDITAR", "Parametro", f"Cambio en {param.clave}")
         return jsonify(param.to_dict())
     if request.method == "DELETE":
         db.session.delete(param); db.session.commit()
-        registrar_auditoria("ELIMINAR", "Parametro", f"Eliminado ID {pid}") # <--- AUDITORIA
+        registrar_auditoria("ELIMINAR", "Parametro", f"Eliminado ID {pid}")
         return jsonify({"message": "Eliminado"})
 
 @bp.route("/api/admin/cotizaciones", methods=["GET", "POST"])
@@ -212,7 +227,7 @@ def api_cotizaciones_sistema():
             venta=data['venta']
         )
         db.session.add(cot); db.session.commit()
-        registrar_auditoria("CREAR", "Cotizacion", f"Cotización del {cot.fecha}") # <--- AUDITORIA
+        registrar_auditoria("CREAR", "Cotizacion", f"Cotización del {cot.fecha}")
         return jsonify(cot.to_dict()), 201
     return jsonify([c.to_dict() for c in Cotizacion.query.order_by(Cotizacion.fecha.desc()).limit(50).all()])
 
@@ -225,11 +240,11 @@ def api_cotizacion_sistema_detalle(cid):
         cot.compra = data['compra']
         cot.venta = data['venta']
         db.session.commit()
-        registrar_auditoria("EDITAR", "Cotizacion", f"Edición ID {cid}") # <--- AUDITORIA
+        registrar_auditoria("EDITAR", "Cotizacion", f"Edición ID {cid}")
         return jsonify(cot.to_dict())
     if request.method == "DELETE":
         db.session.delete(cot); db.session.commit()
-        registrar_auditoria("ELIMINAR", "Cotizacion", f"Baja ID {cid}") # <--- AUDITORIA
+        registrar_auditoria("ELIMINAR", "Cotizacion", f"Baja ID {cid}")
         return jsonify({"message": "Eliminado"})
 
 @bp.route("/api/admin/aplicaciones", methods=["GET"])
@@ -260,7 +275,7 @@ def api_rol_detalle(id_rol):
                 if app:
                     rol.aplicaciones.append(app)
             db.session.commit()
-            registrar_auditoria("PERMISOS", "Rol", f"Actualizados permisos para rol {rol.name}") # <--- AUDITORIA
+            registrar_auditoria("PERMISOS", "Rol", f"Actualizados permisos para rol {rol.name}")
             return jsonify({"message": "Permisos actualizados"})
         rol.name = data.get('name', rol.name)
         rol.description = data.get('description', rol.description)

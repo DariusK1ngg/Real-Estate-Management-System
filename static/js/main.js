@@ -2,6 +2,32 @@
 
 const formateadorPYG = new Intl.NumberFormat('es-PY');
 
+// Configuración de idioma DataTable en local para evitar errores CORS
+const dtLanguageES = {
+    "decimal": "",
+    "emptyTable": "No hay datos disponibles en la tabla",
+    "info": "Mostrando _START_ a _END_ de _TOTAL_ entradas",
+    "infoEmpty": "Mostrando 0 a 0 de 0 entradas",
+    "infoFiltered": "(filtrado de _MAX_ entradas totales)",
+    "infoPostFix": "",
+    "thousands": ".",
+    "lengthMenu": "Mostrar _MENU_ entradas",
+    "loadingRecords": "Cargando...",
+    "processing": "Procesando...",
+    "search": "Buscar:",
+    "zeroRecords": "No se encontraron registros coincidentes",
+    "paginate": {
+        "first": "Primero",
+        "last": "Último",
+        "next": "Siguiente",
+        "previous": "Anterior"
+    },
+    "aria": {
+        "sortAscending": ": activar para ordenar la columna ascendente",
+        "sortDescending": ": activar para ordenar la columna descendente"
+    }
+};
+
 document.addEventListener('DOMContentLoaded', function () {
     
     // === 1. AUTO-FORMATO DE MONEDA ===
@@ -41,15 +67,11 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // === 4. DATATABLES AUTOMÁTICO (FILTROS Y BÚSQUEDA EN TABLAS) ===
-    // Si existe jQuery y DataTables, convierte todas las tablas en tablas inteligentes
     if ($.fn.DataTable) {
         $('.table').each(function() {
-            // Evitamos reinicializar si ya es DataTable o si tiene clase 'no-datatable'
             if (!$.fn.DataTable.isDataTable(this) && !$(this).hasClass('no-datatable')) {
                 $(this).DataTable({
-                    language: {
-                        url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
-                    },
+                    language: dtLanguageES,
                     responsive: true,
                     pageLength: 10,
                     order: [] // No ordenar por defecto la primera columna
@@ -104,7 +126,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }, 300);
         });
 
-        // Cerrar al hacer clic fuera
         document.addEventListener('click', function(e) {
             if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
                 searchResults.style.display = 'none';

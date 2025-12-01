@@ -199,14 +199,17 @@ def api_ventas_general():
         data = []
         for s in servicios_cargados:
             cliente_nombre = "Desconocido"
+            cliente_doc = "-"
             if s.contrato and s.contrato.cliente:
                 cliente_nombre = f"{s.contrato.cliente.nombre} {s.contrato.cliente.apellido}"
+                cliente_doc = s.contrato.cliente.documento
             
             data.append({
                 "id": s.id,
                 "fecha": s.fecha_vencimiento.strftime("%d/%m/%Y"),
                 "numero": f"SERV-{s.id}",
                 "cliente_nombre": cliente_nombre,
+                "cliente_documento": cliente_doc,
                 "concepto": s.observaciones,
                 "total": float(s.valor_cuota),
                 "estado": s.estado

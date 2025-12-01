@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from extensions import db
 from models import EntidadFinanciera, CuentaBancaria, DepositoBancario, Caja, MovimientoCaja, Cotizacion
 from datetime import datetime
-from utils import role_required, registrar_auditoria # <--- IMPORTAR
+from utils import role_required, registrar_auditoria
 
 bp = Blueprint('tesoreria', __name__)
 
@@ -22,6 +22,30 @@ def tesoreria_reportes(): return render_template("tesoreria/reportes.html")
 @role_required('Admin', 'Cajero')
 def tesoreria_definiciones(): return render_template("tesoreria/definiciones.html")
 
+# --- NUEVA RUTA AGREGADA PARA SOLUCIONAR EL ERROR DE CONEXIÓN EN COBROS ---
+@bp.route("/api/admin/caja/estado", methods=["GET"])
+@login_required
+def api_caja_estado():
+    # Verificar si hay una caja abierta en la sesión
+    caja_id = session.get("caja_id")
+    
+    if caja_id:
+        caja = Caja.query.get(caja_id)
+        if caja and caja.abierta:
+            return jsonify({
+                "caja_abierta": True,
+                "caja_descripcion": caja.descripcion,
+                "saldo_actual": float(caja.saldo_actual)
+            })
+    
+    # Si no hay sesión, verificamos si hay alguna caja abierta asignada (opcional, por seguridad retornamos cerrado)
+    return jsonify({
+        "caja_abierta": False,
+        "caja_descripcion": "",
+        "saldo_actual": 0.0
+    })
+# --------------------------------------------------------------------------
+
 @bp.route("/api/admin/entidades-financieras", methods=["GET", "POST"])
 @login_required
 @role_required('Admin', 'Cajero')
@@ -32,7 +56,7 @@ def api_entidades_financieras():
         if EntidadFinanciera.query.filter_by(nombre=data['nombre']).first(): return jsonify({"error": "La entidad ya existe"}), 400
         entidad = EntidadFinanciera(nombre=data['nombre'])
         db.session.add(entidad); db.session.commit()
-        registrar_auditoria("CREAR", "EntidadFinanciera", f"Nueva entidad: {entidad.nombre}") # <--- AUDITORIA
+        registrar_auditoria("CREAR", "EntidadFinanciera", f"Nueva entidad: {entidad.nombre}")
         return jsonify(entidad.to_dict()), 201
     return jsonify([e.to_dict() for e in EntidadFinanciera.query.order_by(EntidadFinanciera.nombre).all()])
 
@@ -48,12 +72,12 @@ def api_entidad_financiera_detalle(eid):
             return jsonify({"error": "Ese nombre ya está en uso"}), 400
         entidad.nombre = data['nombre']
         db.session.commit()
-        registrar_auditoria("EDITAR", "EntidadFinanciera", f"Editada entidad ID {eid}") # <--- AUDITORIA
+        registrar_auditoria("EDITAR", "EntidadFinanciera", f"Editada entidad ID {eid}")
         return jsonify(entidad.to_dict())
     if request.method == "DELETE":
         if entidad.cuentas: return jsonify({"error": "No se puede eliminar, tiene cuentas asociadas."}), 400
         db.session.delete(entidad); db.session.commit()
-        registrar_auditoria("ELIMINAR", "EntidadFinanciera", f"Eliminada entidad ID {eid}") # <--- AUDITORIA
+        registrar_auditoria("ELIMINAR", "EntidadFinanciera", f"Eliminada entidad ID {eid}")
         return jsonify({"message": "Entidad eliminada"})
 
 @bp.route("/api/admin/cuentas-bancarias", methods=["GET", "POST"])
@@ -68,7 +92,7 @@ def api_cuentas_bancarias():
             return jsonify({"error": "Ese número de cuenta ya existe"}), 400
         cuenta = CuentaBancaria(entidad_id=data['entidad_id'], numero_cuenta=data['numero_cuenta'], titular=data['titular'], tipo_cuenta=data['tipo_cuenta'], moneda=data['moneda'])
         db.session.add(cuenta); db.session.commit()
-        registrar_auditoria("CREAR", "CuentaBancaria", f"Nueva cuenta {cuenta.numero_cuenta}") # <--- AUDITORIA
+        registrar_auditoria("CREAR", "CuentaBancaria", f"Nueva cuenta {cuenta.numero_cuenta}")
         return jsonify(cuenta.to_dict()), 201
     return jsonify([c.to_dict() for c in CuentaBancaria.query.order_by(CuentaBancaria.numero_cuenta).all()])
 
@@ -85,12 +109,12 @@ def api_cuenta_bancaria_detalle(cid):
         cuenta.tipo_cuenta = data.get('tipo_cuenta', cuenta.tipo_cuenta)
         cuenta.moneda = data.get('moneda', cuenta.moneda)
         db.session.commit()
-        registrar_auditoria("EDITAR", "CuentaBancaria", f"Modificada cuenta {cuenta.numero_cuenta}") # <--- AUDITORIA
+        registrar_auditoria("EDITAR", "CuentaBancaria", f"Modificada cuenta {cuenta.numero_cuenta}")
         return jsonify(cuenta.to_dict())
     if request.method == "DELETE":
         if cuenta.depositos: return jsonify({"error": "No se puede eliminar, tiene depósitos asociados."}), 400
         db.session.delete(cuenta); db.session.commit()
-        registrar_auditoria("ELIMINAR", "CuentaBancaria", f"Eliminada cuenta ID {cid}") # <--- AUDITORIA
+        registrar_auditoria("ELIMINAR", "CuentaBancaria", f"Eliminada cuenta ID {cid}")
         return jsonify({"message": "Cuenta eliminada"})
 
 @bp.route("/api/admin/depositos", methods=["GET", "POST"])
@@ -114,7 +138,7 @@ def api_depositos():
         cuenta.saldo = (cuenta.saldo or 0) + monto
         db.session.add(deposito)
         db.session.commit()
-        registrar_auditoria("CREAR", "DepositoBancario", f"Depósito de {monto:,.0f} en Cta {cuenta.numero_cuenta}") # <--- AUDITORIA
+        registrar_auditoria("CREAR", "DepositoBancario", f"Depósito de {monto:,.0f} en Cta {cuenta.numero_cuenta}")
         return jsonify(deposito.to_dict()), 201
     depositos = DepositoBancario.query.order_by(DepositoBancario.fecha_deposito.desc()).all()
     return jsonify([d.to_dict() for d in depositos])
@@ -131,7 +155,7 @@ def api_deposito_detalle(did):
     cuenta.saldo -= deposito.monto
     deposito.estado = 'anulado'
     db.session.commit()
-    registrar_auditoria("ANULAR", "DepositoBancario", f"Anulado depósito ID {did}") # <--- AUDITORIA
+    registrar_auditoria("ANULAR", "DepositoBancario", f"Anulado depósito ID {did}")
     return jsonify({"message": "Depósito anulado correctamente"})
 
 @bp.route("/api/admin/transferencias", methods=["POST"])
@@ -210,7 +234,7 @@ def api_transferencias_bancarias():
         db.session.add(ingreso)
         db.session.commit()
         
-        registrar_auditoria("TRANSFERENCIA", "Tesoreria", f"Transf. {monto:,.0f} {moneda_origen} de Cta {cuenta_origen.numero_cuenta} a {cuenta_destino.numero_cuenta}") # <--- AUDITORIA
+        registrar_auditoria("TRANSFERENCIA", "Tesoreria", f"Transf. {monto:,.0f} {moneda_origen} de Cta {cuenta_origen.numero_cuenta} a {cuenta_destino.numero_cuenta}")
         
         return jsonify({"message": "Transferencia realizada con éxito"}), 201
         
@@ -249,7 +273,7 @@ def api_abrir_caja():
     db.session.commit()
     
     session["caja_id"] = caja.id
-    registrar_auditoria("APERTURA", "Caja", f"Apertura Caja {caja.descripcion} con {monto_apertura:,.0f}") # <--- AUDITORIA
+    registrar_auditoria("APERTURA", "Caja", f"Apertura Caja {caja.descripcion} con {monto_apertura:,.0f}")
     return jsonify({"ok": True, "message": f"Caja '{caja.descripcion}' abierta con Gs. {monto_apertura:,.0f}"})
 
 @bp.route("/api/admin/caja/cerrar", methods=["POST"])
@@ -282,5 +306,5 @@ def api_cerrar_caja():
     db.session.commit()
     
     session.pop("caja_id", None)
-    registrar_auditoria("CIERRE", "Caja", f"Cierre Caja {caja.descripcion} con saldo {saldo_cierre:,.0f}") # <--- AUDITORIA
+    registrar_auditoria("CIERRE", "Caja", f"Cierre Caja {caja.descripcion} con saldo {saldo_cierre:,.0f}")
     return jsonify({"ok": True, "message": f"Caja '{caja.descripcion}' cerrada con saldo Gs. {saldo_cierre:,.0f}"})
