@@ -60,22 +60,44 @@ function setupModalBase() {
 
 async function cargarDatosBase(endpoint) {
     let tableId = `tbody-${endpoint}`;
-    if (endpoint === 'tipos-documentos') tableId = 'tbody-tipos-documentos'; // Ajuste por nombre plural
+    if (endpoint === 'tipos-documentos') tableId = 'tbody-tipos-documentos'; 
+    
     const tbody = document.getElementById(tableId);
     if (!tbody) return;
+
+    // Calcular columnas para el colspan
+    let cols = 3; // ID, Nombre, Acciones
+    if (endpoint === 'impuestos') cols = 4; // ID, Nombre, %, Acciones
+
+    tbody.innerHTML = `<tr><td colspan="${cols}" class="text-center">Cargando...</td></tr>`;
     
-    const res = await fetch(`/api/admin/${endpoint}`);
-    const list = await res.json();
-    tbody.innerHTML = '';
-    
-    list.forEach(item => {
-        let extra = endpoint === 'impuestos' ? `<td>${item.porcentaje}%</td>` : '';
-        const itemStr = JSON.stringify(item).replace(/"/g, '&quot;');
-        tbody.innerHTML += `<tr><td>${item.id}</td><td>${item.nombre}</td>${extra}<td>
-            <button class="btn btn-sm btn-warning" onclick="editarSimple('${endpoint}', ${itemStr})">Editar</button>
-            <button class="btn btn-sm btn-danger" onclick="eliminarSimple('${endpoint}', ${item.id})">Eliminar</button>
-        </td></tr>`;
-    });
+    try {
+        const res = await fetch(`/api/admin/${endpoint}`);
+        const list = await res.json();
+        tbody.innerHTML = '';
+        
+        if (list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="${cols}" class="text-center text-muted">No hay registros.</td></tr>`;
+            return;
+        }
+
+        list.forEach(item => {
+            let extra = endpoint === 'impuestos' ? `<td>${item.porcentaje}%</td>` : '';
+            const itemStr = JSON.stringify(item).replace(/"/g, '&quot;');
+            
+            tbody.innerHTML += `<tr>
+                <td>${item.id}</td>
+                <td>${item.nombre}</td>
+                ${extra}
+                <td>
+                    <button class="btn btn-sm btn-warning" onclick="editarSimple('${endpoint}', ${itemStr})">Editar</button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarSimple('${endpoint}', ${item.id})">Eliminar</button>
+                </td>
+            </tr>`;
+        });
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="${cols}" class="text-danger text-center">Error de conexión</td></tr>`;
+    }
 }
 
 window.editarSimple = function(endpoint, item) {
@@ -102,6 +124,8 @@ window.eliminarSimple = async function(endpoint, id) {
 };
 
 // --- LÓGICA ESPECÍFICA (PARAMETROS, UBICACIONES, COTIZACIONES) ---
+// (El resto del código de parámetros, ciudades, etc. se mantiene igual, 
+// solo asegúrate de revisar el HTML de esas tablas para que coincida con el JS)
 
 function setupModalsCustom() {
     // Parámetros
@@ -167,26 +191,34 @@ function setupModalsCustom() {
     });
 }
 
-// --- FUNCIONES DE CARGA ---
-
 async function cargarParametros() {
-    const res = await fetch('/api/admin/parametros');
-    const list = await res.json();
     const tbody = document.getElementById('tbody-parametros');
-    tbody.innerHTML = '';
-    list.forEach(p => {
-        const pStr = JSON.stringify(p).replace(/"/g, '&quot;');
-        tbody.innerHTML += `<tr><td>${p.clave}</td><td>${p.valor}</td><td>${p.descripcion || ''}</td><td>
-            <button class="btn btn-sm btn-warning" onclick='editarParametro(${pStr})'>Editar</button>
-            <button class="btn btn-sm btn-danger" onclick="eliminarParametro(${p.id})">X</button>
-        </td></tr>`;
-    });
+    if (!tbody) return;
+    // 4 Columnas: Clave, Valor, Descripción, Acciones
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center">Cargando...</td></tr>';
+    
+    try {
+        const res = await fetch('/api/admin/parametros');
+        const list = await res.json();
+        tbody.innerHTML = '';
+        list.forEach(p => {
+            const pStr = JSON.stringify(p).replace(/"/g, '&quot;');
+            tbody.innerHTML += `<tr><td>${p.clave}</td><td>${p.valor}</td><td>${p.descripcion || ''}</td><td>
+                <button class="btn btn-sm btn-warning" onclick='editarParametro(${pStr})'>Editar</button>
+                <button class="btn btn-sm btn-danger" onclick="eliminarParametro(${p.id})">X</button>
+            </td></tr>`;
+        });
+    } catch(e) { tbody.innerHTML = '<tr><td colspan="4" class="text-danger">Error</td></tr>'; }
 }
 
 async function cargarCiudades() {
+    const tbody = document.getElementById('tbody-ciudades');
+    if (!tbody) return;
+    // 2 Columnas: Nombre, Acciones (Asegúrate que el HTML tenga 2 TH)
+    tbody.innerHTML = '<tr><td colspan="2" class="text-center">Cargando...</td></tr>';
+    
     const res = await fetch('/api/admin/ciudades');
     const list = await res.json();
-    const tbody = document.getElementById('tbody-ciudades');
     const selectFiltro = document.getElementById('filtro-ciudad-barrio');
     
     tbody.innerHTML = '';
@@ -201,30 +233,42 @@ async function cargarCiudades() {
         selectFiltro.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
     });
     
-    // Cargar barrios si hay ciudad seleccionada
     cargarBarrios(selectFiltro.value);
 }
 
 window.cargarBarrios = async function(ciudadId = null) {
+    const tbody = document.getElementById('tbody-barrios');
+    if (!tbody) return;
+    // 2 Columnas: Nombre, Acciones
+    tbody.innerHTML = '<tr><td colspan="2" class="text-center">Cargando...</td></tr>';
+
     if (!ciudadId) ciudadId = document.getElementById('filtro-ciudad-barrio').value;
     const url = ciudadId ? `/api/admin/barrios?ciudad_id=${ciudadId}` : '/api/admin/barrios';
-    const res = await fetch(url);
-    const list = await res.json();
-    const tbody = document.getElementById('tbody-barrios');
-    tbody.innerHTML = '';
-    list.forEach(b => {
-        const bStr = JSON.stringify(b).replace(/"/g, '&quot;');
-        tbody.innerHTML += `<tr><td>${b.nombre}</td><td>
-            <button class="btn btn-sm btn-warning" onclick='editarBarrio(${bStr})'>Editar</button>
-            <button class="btn btn-sm btn-danger" onclick="eliminarBarrio(${b.id})">X</button>
-        </td></tr>`;
-    });
+    
+    try {
+        const res = await fetch(url);
+        const list = await res.json();
+        tbody.innerHTML = '';
+        if(list.length === 0) tbody.innerHTML = '<tr><td colspan="2" class="text-muted">Sin registros</td></tr>';
+        
+        list.forEach(b => {
+            const bStr = JSON.stringify(b).replace(/"/g, '&quot;');
+            tbody.innerHTML += `<tr><td>${b.nombre}</td><td>
+                <button class="btn btn-sm btn-warning" onclick='editarBarrio(${bStr})'>Editar</button>
+                <button class="btn btn-sm btn-danger" onclick="eliminarBarrio(${b.id})">X</button>
+            </td></tr>`;
+        });
+    } catch(e) { tbody.innerHTML = '<tr><td colspan="2" class="text-danger">Error</td></tr>'; }
 };
 
 async function cargarCotizaciones() {
+    const tbody = document.getElementById('tbody-cotizaciones');
+    if (!tbody) return;
+    // 6 Columnas: Fecha, Origen, Destino, Compra, Venta, Acciones
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando...</td></tr>';
+    
     const res = await fetch('/api/admin/cotizaciones');
     const list = await res.json();
-    const tbody = document.getElementById('tbody-cotizaciones');
     tbody.innerHTML = '';
     list.forEach(c => {
         const cStr = JSON.stringify(c).replace(/"/g, '&quot;');
@@ -235,8 +279,7 @@ async function cargarCotizaciones() {
     });
 }
 
-// --- FUNCIONES DE APERTURA DE MODALES Y EDICIÓN ---
-
+// ... Resto de funciones de modales igual ...
 window.abrirModalParametro = () => {
     document.getElementById('formParametro').reset();
     document.getElementById('paramId').value = '';
@@ -274,7 +317,6 @@ window.eliminarCiudad = async (id) => {
 window.abrirModalBarrio = async () => {
     document.getElementById('formBarrio').reset();
     document.getElementById('barrioId').value = '';
-    // Cargar ciudades en el select del modal
     const res = await fetch('/api/admin/ciudades');
     const ciudades = await res.json();
     const select = document.getElementById('barrioCiudad');
@@ -283,7 +325,7 @@ window.abrirModalBarrio = async () => {
     abrirModal('modalBarrio');
 };
 window.editarBarrio = async (b) => {
-    await window.abrirModalBarrio(); // Para cargar el select
+    await window.abrirModalBarrio(); 
     document.getElementById('barrioId').value = b.id;
     document.getElementById('barrioNombre').value = b.nombre;
     document.getElementById('barrioCiudad').value = b.ciudad_id;
@@ -316,7 +358,6 @@ window.eliminarCotizacion = async (id) => {
     cargarCotizaciones();
 };
 
-// Función auxiliar local para abrir modales (si no está en main.js)
 function abrirModal(id) {
     const el = document.getElementById(id);
     const modal = new bootstrap.Modal(el);

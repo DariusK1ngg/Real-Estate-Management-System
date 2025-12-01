@@ -1,278 +1,492 @@
 from flask import Blueprint, render_template, request, jsonify, Response
-from flask_login import login_required
+from flask_login import login_required, current_user
 from extensions import db
-from models import Fraccionamiento, Lote, ListaPrecioLote, CondicionPago, Contrato, Cuota, Cliente
+from models import Fraccionamiento, Lote, Contrato, Cuota, Cliente, ListaPrecioLote, Funcionario
 from datetime import datetime, timedelta, date
-from utils import role_required, admin_required, get_param, clean, registrar_auditoria
+from utils import role_required, admin_required, get_param, clean, registrar_auditoria # <--- IMPORTANTE
+from sqlalchemy import or_, desc
+from dateutil.relativedelta import relativedelta
 from fpdf import FPDF
 from num2words import num2words
-from sqlalchemy import or_
 import locale
 
 bp = Blueprint('inventario', __name__)
 
+# --- VISTAS HTML ---
+
 @bp.route("/admin/inventario/movimientos")
 @login_required
-@role_required('Empleado', 'Vendedor')
-def inventario_movimientos(): 
+@role_required('Empleado', 'Vendedor', 'Admin')
+def inventario_movimientos():
     return render_template("inventario/movimientos.html")
 
-@bp.route("/admin/inventario/movimientos/contratos/nuevo")
+@bp.route("/admin/inventario/contratos/nuevo")
 @login_required
-@role_required('Empleado', 'Vendedor')
-def inventario_movimientos_contratos_nuevo(): 
+@role_required('Empleado', 'Vendedor', 'Admin')
+def inventario_nuevo_contrato():
     return render_template("inventario/movimientos_contratos_nuevo.html", now=date.today().isoformat())
 
 @bp.route("/admin/inventario/reportes")
 @login_required
-@role_required('Empleado', 'Vendedor')
 def inventario_reportes(): return render_template("inventario/reportes.html")
 
 @bp.route("/admin/inventario/definiciones")
 @login_required
-@role_required('Admin', 'Empleado', 'Vendedor')
 def inventario_definiciones(): return render_template("inventario/definiciones_fraccionamientos.html")
 
 @bp.route("/admin/inventario/fraccionamientos/<int:fraccionamiento_id>")
 @login_required
-@role_required('Admin', 'Empleado', 'Vendedor')
 def inventario_fraccionamiento_detalle(fraccionamiento_id):
     fraccionamiento = Fraccionamiento.query.get_or_404(fraccionamiento_id)
     return render_template("inventario/fraccionamiento_detalle.html", fraccionamiento=fraccionamiento)
 
+# ==========================================
+# APIs PÚBLICAS (PARA EL MAPA)
+# ==========================================
+
 @bp.route("/api/fraccionamientos", methods=["GET"])
-def api_fraccionamientos_geojson_list(): 
+def public_fraccionamientos():
+    # Usado por main.js y admin.js para cargar el mapa
     fracs = Fraccionamiento.query.all()
-    return jsonify({"type": "FeatureCollection", "features": [f.to_feature() for f in fracs]})
+    features = [f.to_feature() for f in fracs]
+    return jsonify({"type": "FeatureCollection", "features": features})
 
-@bp.route("/api/fraccionamientos/<int:fid>/lotes", methods=["GET"])
-def api_lotes_by_frac(fid): 
-    lotes = Lote.query.filter_by(fraccionamiento_id=fid).all()
-    return jsonify({"type": "FeatureCollection", "features": [l.to_feature() for l in lotes]})
-    
 @bp.route("/api/lotes", methods=["GET"])
-def api_lotes_all():
-    lotes = Lote.query.all()
-    return jsonify({"type": "FeatureCollection", "features": [l.to_feature() for l in lotes]})
-
-@bp.route("/api/admin/fraccionamientos", methods=["GET"])
-@login_required
-def api_fraccionamientos_lista():
-    search = request.args.get('q', '')
-    query = Fraccionamiento.query
-    if search: query = query.filter(Fraccionamiento.nombre.ilike(f'%{search}%'))
-    return jsonify([f.to_dict() for f in query.order_by(Fraccionamiento.nombre).all()])
-
-@bp.route("/api/admin/fraccionamientos/<int:fid>/detalle", methods=["GET"])
-@login_required
-def api_fraccionamiento_detalle_completo(fid):
-    frac = Fraccionamiento.query.get_or_404(fid)
-    lotes = Lote.query.filter_by(fraccionamiento_id=fid).order_by(Lote.manzana, Lote.numero_lote).all()
-    data = frac.to_dict()
-    data['lotes'] = [l.to_feature()['properties'] for l in lotes]
-    return jsonify(data)
-
-@bp.route("/api/admin/fraccionamientos", methods=["POST"])
-@login_required
-@admin_required
-def api_admin_crear_fraccionamiento():
-    data = request.get_json(force=True)
-    if not data.get('nombre') or not data.get('geojson'): return jsonify({"error": "Datos incompletos"}), 400
+def public_lotes():
+    # Usado por main.js y admin.js
+    frac_id = request.args.get('fraccionamiento_id')
+    query = Lote.query.filter_by(activo=True)
+    if frac_id:
+        query = query.filter_by(fraccionamiento_id=frac_id)
     
-    ciudad_id = int(data["ciudad_id"]) if data.get("ciudad_id") else None
-    f = Fraccionamiento(nombre=data["nombre"], descripcion=data.get("descripcion", ""), geojson=data["geojson"], ciudad_id=ciudad_id)
-    db.session.add(f); db.session.commit()
-    return jsonify({"ok": True, "id": f.id}), 201
+    lotes = query.all()
+    features = [l.to_feature() for l in lotes]
+    return jsonify({"type": "FeatureCollection", "features": features})
 
-@bp.route("/api/admin/fraccionamientos/<int:fid>", methods=["PATCH", "DELETE"])
+# ==========================================
+# APIs ADMINISTRATIVAS (GESTIÓN DE MAPA)
+# ==========================================
+
+@bp.route("/api/admin/fraccionamientos", methods=["GET", "POST"])
 @login_required
-@admin_required
-def api_admin_fraccionamientos_gestion(fid):
-    f = Fraccionamiento.query.get_or_404(fid)
-    if request.method == "DELETE":
-        if f.lotes: return jsonify({"error": "Tiene lotes asociados"}), 400
-        db.session.delete(f); db.session.commit()
-        return jsonify({"message": "Eliminado"})
-    if request.method == "PATCH":
-        d = request.get_json(force=True)
-        f.nombre = d.get("nombre", f.nombre)
-        f.descripcion = d.get("descripcion", f.descripcion)
-        f.comision_inmobiliaria = d.get("comision_inmobiliaria", f.comision_inmobiliaria)
-        f.comision_propietario = d.get("comision_propietario", f.comision_propietario)
-        if 'ciudad_id' in d: f.ciudad_id = int(d['ciudad_id']) if d['ciudad_id'] else None
-        db.session.commit()
+def api_admin_fraccionamientos():
+    # GET: Lista simple para selects
+    if request.method == "GET":
+        q = request.args.get('q')
+        query = Fraccionamiento.query
+        if q:
+            query = query.filter(Fraccionamiento.nombre.ilike(f"%{q}%"))
+        fracs = query.order_by(Fraccionamiento.nombre).all()
+        return jsonify([f.to_dict() for f in fracs])
+
+    # POST: Crear Fraccionamiento desde el Mapa
+    if request.method == "POST":
+        data = request.json
+        try:
+            nuevo = Fraccionamiento(
+                nombre=data['nombre'],
+                descripcion=data.get('descripcion'),
+                ciudad_id=int(data['ciudad_id']) if data.get('ciudad_id') else None,
+                geojson=data['geojson']
+            )
+            db.session.add(nuevo)
+            db.session.commit()
+            registrar_auditoria("CREAR", "Fraccionamiento", f"Creado fraccionamiento: {nuevo.nombre}")
+            return jsonify({"ok": True, "id": nuevo.id})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 500
+
+@bp.route("/api/admin/fraccionamientos/<int:id>", methods=["GET", "PATCH", "DELETE"])
+@login_required
+def api_admin_fraccionamiento_detalle(id):
+    f = Fraccionamiento.query.get_or_404(id)
+    
+    if request.method == "GET":
+        # Usado en la vista de detalle para ver lotes asociados
+        if request.endpoint.endswith('detalle'): # Detalle completo con lotes
+            lotes = [{"id": l.id, "numero_lote": l.numero_lote, "manzana": l.manzana, "estado": l.estado} for l in f.lotes]
+            d = f.to_dict()
+            d['lotes'] = lotes
+            return jsonify(d)
         return jsonify(f.to_dict())
+
+    if request.method == "PATCH":
+        data = request.json
+        cambios = []
+        try:
+            if 'nombre' in data:
+                if f.nombre != data['nombre']: cambios.append(f"Nombre: {f.nombre} -> {data['nombre']}")
+                f.nombre = data['nombre']
+            if 'descripcion' in data: f.descripcion = data['descripcion']
+            if 'ciudad_id' in data: f.ciudad_id = int(data['ciudad_id']) if data['ciudad_id'] else None
+            if 'comision_propietario' in data: f.comision_propietario = data['comision_propietario']
+            if 'comision_inmobiliaria' in data: f.comision_inmobiliaria = data['comision_inmobiliaria']
+            if 'geojson' in data: 
+                f.geojson = data['geojson']
+                cambios.append("Se actualizó el mapa/polígono")
+
+            db.session.commit()
+            if cambios:
+                registrar_auditoria("EDITAR", "Fraccionamiento", f"Editado {f.nombre}: {', '.join(cambios)}")
+            return jsonify({"ok": True})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 500
+
+    if request.method == "DELETE":
+        if f.lotes:
+            return jsonify({"error": "No se puede eliminar, tiene lotes asociados"}), 400
+        nombre = f.nombre
+        db.session.delete(f)
+        db.session.commit()
+        registrar_auditoria("ELIMINAR", "Fraccionamiento", f"Eliminado: {nombre}")
+        return jsonify({"ok": True})
 
 @bp.route("/api/admin/lotes", methods=["POST"])
 @login_required
-@admin_required
-def api_admin_create_lote(): 
-    d = request.get_json(force=True)
-    l = Lote(numero_lote=str(d["numero_lote"]), manzana=str(d["manzana"]), precio=float(d["precio"]), metros_cuadrados=int(d["metros_cuadrados"]), estado=str(d["estado"]), geojson=d["geojson"], fraccionamiento_id=int(d["fraccionamiento_id"]))
-    db.session.add(l); db.session.commit()
-    return jsonify({"ok": True, "id": l.id})
-
-@bp.route("/api/admin/lotes/<int:lid>", methods=["PATCH", "DELETE"])
-@login_required
-@admin_required
-def api_admin_update_delete_lote(lid):
-    l = Lote.query.get_or_404(lid)
-    if request.method == "DELETE":
-        if l.contratos: return jsonify({"error": "Lote con contratos"}), 400
-        db.session.delete(l); db.session.commit(); return jsonify({"ok": True})
-    if request.method == "PATCH":
-        d = request.get_json(force=True)
-        l.manzana = d.get("manzana", l.manzana)
-        l.numero_lote = d.get("numero_lote", l.numero_lote)
-        l.precio = d.get("precio", l.precio)
-        l.metros_cuadrados = d.get("metros_cuadrados", l.metros_cuadrados)
-        l.estado = d.get("estado", l.estado)
-        if "geojson" in d: l.geojson = d["geojson"]
-        db.session.commit(); return jsonify({"ok": True})
-
-@bp.route("/api/admin/lotes/<int:lote_id>/precios", methods=["GET", "POST"])
-@login_required
-@role_required('Admin', 'Empleado')
-def api_lista_precios_lote(lote_id):
-    lote = Lote.query.get_or_404(lote_id)
-    if request.method == "POST":
-        d = request.json
-        np = ListaPrecioLote(lote_id=lote_id, condicion_pago_id=d['condicion_pago_id'], cantidad_cuotas=d['cantidad_cuotas'], precio_cuota=d['precio_cuota'], precio_total=d['precio_total'])
-        db.session.add(np)
-        cp = CondicionPago.query.get(d['condicion_pago_id'])
-        if cp and 'contado' in cp.nombre.lower(): lote.precio = d['precio_total']
-        if int(d['cantidad_cuotas']) == 130: lote.precio_financiado_130 = d['precio_total']; lote.precio_cuota_130 = d['precio_cuota']
+def api_admin_lotes_crear():
+    data = request.json
+    try:
+        nuevo = Lote(
+            numero_lote=data['numero_lote'],
+            manzana=data['manzana'],
+            precio=data['precio'],
+            metros_cuadrados=data['metros_cuadrados'],
+            estado=data.get('estado', 'disponible'),
+            fraccionamiento_id=data['fraccionamiento_id'],
+            geojson=data['geojson'],
+            activo=True
+        )
+        db.session.add(nuevo)
         db.session.commit()
-        return jsonify(np.to_dict()), 201
-    return jsonify([p.to_dict() for p in ListaPrecioLote.query.filter_by(lote_id=lote_id).all()])
+        registrar_auditoria("CREAR", "Lote", f"Creado Lote {nuevo.numero_lote} Mz {nuevo.manzana} en Fracc ID {nuevo.fraccionamiento_id}")
+        return jsonify({"ok": True, "id": nuevo.id})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
-@bp.route("/api/admin/lista-precios/<int:pid>", methods=["DELETE"])
+@bp.route("/api/admin/lotes/<int:id>", methods=["PATCH", "DELETE"])
 @login_required
-def api_delete_lista_precio(pid):
-    p = ListaPrecioLote.query.get_or_404(pid)
-    db.session.delete(p); db.session.commit(); return jsonify({"message": "Eliminado"})
+def api_admin_lotes_detalle(id):
+    lote = Lote.query.get_or_404(id)
+    
+    if request.method == "PATCH":
+        data = request.json
+        cambios = []
+        try:
+            if 'precio' in data and float(data['precio']) != float(lote.precio):
+                cambios.append(f"Precio: {lote.precio} -> {data['precio']}")
+                lote.precio = data['precio']
+            
+            if 'estado' in data and data['estado'] != lote.estado:
+                cambios.append(f"Estado: {lote.estado} -> {data['estado']}")
+                lote.estado = data['estado']
+            
+            if 'metros_cuadrados' in data: lote.metros_cuadrados = data['metros_cuadrados']
+            if 'numero_lote' in data: lote.numero_lote = data['numero_lote']
+            if 'manzana' in data: lote.manzana = data['manzana']
+            if 'geojson' in data: lote.geojson = data['geojson']
 
-@bp.route("/api/admin/lotes-disponibles")
-@login_required
-def api_lotes_disponibles(): 
-    lotes = Lote.query.filter(Lote.estado.in_(["disponible", "reservado"]), Lote.activo == True).all()
-    return jsonify([{"id": l.id, "texto": f"{l.fraccionamiento.nombre} - M{l.manzana} L{l.numero_lote} - Gs. {int(l.precio):,}", "precio": float(l.precio)} for l in lotes])
+            db.session.commit()
+            if cambios:
+                registrar_auditoria("EDITAR", "Lote", f"Lote {lote.numero_lote} (Mz {lote.manzana}): {', '.join(cambios)}")
+            return jsonify({"ok": True})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 500
+
+    if request.method == "DELETE":
+        # Baja lógica
+        try:
+            lote.activo = False
+            db.session.commit()
+            registrar_auditoria("ELIMINAR", "Lote", f"Eliminado Lote {lote.numero_lote} Mz {lote.manzana}")
+            return jsonify({"ok": True})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+# ==========================================
+# API CONTRATOS (CRUD)
+# ==========================================
 
 @bp.route("/api/admin/contratos", methods=["GET", "POST"])
 @login_required
 def api_contratos():
     if request.method == "POST":
         d = request.get_json(force=True)
-        if Contrato.query.filter_by(numero_contrato=d["numero_contrato"]).first(): return jsonify({"error": "Contrato duplicado"}), 400
+        
+        if Contrato.query.filter_by(numero_contrato=d["numero_contrato"]).first(): 
+            return jsonify({"error": "El número de contrato ya existe"}), 400
+        
         lote = Lote.query.get(d["lote_id"])
-        if not lote: return jsonify({"error": "Lote inexistente"}), 404
-        
-        valor_total = float(d.get("valor_total", 0))
-        cantidad_cuotas = int(d.get("cantidad_cuotas", 0))
-        valor_cuota = float(d.get("valor_cuota", 0))
-        
-        if 'precio_id' in d and d['precio_id']:
-            plan = ListaPrecioLote.query.get(d['precio_id'])
-            if plan:
-                valor_total = float(plan.precio_total)
-                cantidad_cuotas = plan.cantidad_cuotas
-                valor_cuota = float(plan.precio_cuota)
+        if not lote: return jsonify({"error": "Lote no encontrado"}), 404
+        if lote.estado != 'disponible' and lote.estado != 'reservado':
+            return jsonify({"error": f"El lote está {lote.estado}"}), 400
 
-        if cantidad_cuotas > 0 and valor_cuota == 0: valor_cuota = valor_total / cantidad_cuotas
+        try:
+            # --- 1. CREAR CABECERA DE CONTRATO ---
+            c = Contrato(
+                numero_contrato=d["numero_contrato"],
+                cliente_id=d["cliente_id"],
+                lote_id=d["lote_id"],
+                vendedor_id=int(d.get("vendedor_id")) if d.get("vendedor_id") else None,
+                fecha_contrato=datetime.strptime(d["fecha_contrato"], "%Y-%m-%d").date(),
+                valor_total=float(d["valor_total"]),
+                cuota_inicial=float(d.get("cuota_inicial", 0)),
+                fecha_vencimiento_entrega=datetime.strptime(d["fecha_vencimiento_entrega"], "%Y-%m-%d").date() if d.get("fecha_vencimiento_entrega") else None,
+                cantidad_cuotas=int(d["cantidad_cuotas"]),
+                valor_cuota=float(d["valor_cuota"]),
+                tipo_contrato=d.get("tipo_contrato", "venta"),
+                uso=d.get("uso"),
+                moneda=d.get("moneda"),
+                medida_tiempo=d.get("medida_tiempo"),
+                doc_modelo_contrato=d.get("doc_modelo_contrato"),
+                doc_comp_interno=d.get("doc_comp_interno"),
+                doc_identidad=d.get("doc_identidad"),
+                doc_factura_servicios=d.get("doc_factura_servicios"),
+                doc_ingresos=d.get("doc_ingresos"),
+                observaciones=d.get("observaciones"),
+                estado='activo'
+            )
+            db.session.add(c)
+            db.session.flush() # Para obtener ID
 
-        c = Contrato(
-            numero_contrato=d["numero_contrato"], cliente_id=d["cliente_id"], lote_id=d["lote_id"],
-            fecha_contrato=datetime.strptime(d["fecha_contrato"], "%Y-%m-%d").date(),
-            valor_total=valor_total, cuota_inicial=float(d.get("cuota_inicial", 0)),
-            cantidad_cuotas=cantidad_cuotas, valor_cuota=valor_cuota,
-            tipo_contrato=d.get("tipo_contrato", "venta"), observaciones=d.get("observaciones")
-        )
-        db.session.add(c); db.session.commit()
+            # --- 2. GENERAR CUOTAS ---
+            fecha_base = c.fecha_contrato
+            if 'cuotas_generadas' in d and d['cuotas_generadas']:
+                for item in d['cuotas_generadas']:
+                     cuota = Cuota(
+                        contrato_id=c.id,
+                        numero_cuota=int(item['numero']),
+                        fecha_vencimiento=datetime.strptime(item['vencimiento'], "%d/%m/%Y").date(),
+                        valor_cuota=float(item['monto'].replace('.','')),
+                        estado='pendiente',
+                        tipo='cuota'
+                    )
+                     db.session.add(cuota)
+            else:
+                # Lógica de emergencia
+                for i in range(1, c.cantidad_cuotas + 1):
+                    vencimiento = fecha_base + relativedelta(months=i-1)
+                    cuota = Cuota(
+                        contrato_id=c.id,
+                        numero_cuota=i,
+                        fecha_vencimiento=vencimiento,
+                        valor_cuota=c.valor_cuota,
+                        estado='pendiente',
+                        tipo='cuota'
+                    )
+                    db.session.add(cuota)
 
-        for i in range(1, c.cantidad_cuotas + 1):
-            venc = c.fecha_contrato + timedelta(days=30*i)
-            db.session.add(Cuota(contrato_id=c.id, numero_cuota=i, fecha_vencimiento=venc, valor_cuota=c.valor_cuota))
+            # --- 3. ACTUALIZAR LOTE ---
+            lote.estado = "vendido" if c.tipo_contrato == "venta" else "reservado"
             
-        lote.estado = "vendido" if c.tipo_contrato == "venta" else "reservado"
-        db.session.commit()
-        registrar_auditoria("CREAR", "Contrato", f"Contrato N° {c.numero_contrato} creado para lote {lote.numero_lote}.")
-        return jsonify({"ok": True, "id": c.id}), 201
+            db.session.commit()
+            registrar_auditoria("CREAR", "Contrato", f"Nuevo contrato {c.numero_contrato} (Cliente ID {c.cliente_id})")
+            return jsonify({"ok": True, "id": c.id}), 201
 
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 500
+
+    # GET LISTADO
     query = Contrato.query.join(Cliente).join(Lote).join(Fraccionamiento)
-
-    search = request.args.get('q', '')
-    if search:
-        search_term = f"%{search}%"
+    q = request.args.get('q', '')
+    if q:
+        search = f"%{q}%"
         query = query.filter(or_(
-            Cliente.nombre.ilike(search_term),
-            Cliente.apellido.ilike(search_term),
-            Cliente.documento.ilike(search_term),
-            Fraccionamiento.nombre.ilike(search_term)
+            Cliente.nombre.ilike(search), Cliente.apellido.ilike(search),
+            Cliente.documento.ilike(search), Contrato.numero_contrato.ilike(search),
+            Lote.numero_lote.ilike(search)
         ))
-
-    estado = request.args.get('estado', '')
+    
+    estado = request.args.get('estado')
     if estado and estado != 'todos':
         query = query.filter(Contrato.estado == estado)
 
     contratos = query.order_by(Contrato.fecha_contrato.desc()).all()
     return jsonify([c.to_dict() for c in contratos])
 
-@bp.route("/api/admin/contratos/<int:cid>", methods=["GET", "PATCH"])
+@bp.route("/api/admin/contratos/<int:id>", methods=["GET", "PATCH"])
 @login_required
-def api_contrato_detalle(cid):
-    c = Contrato.query.get_or_404(cid)
-    
+def api_contrato_detalle(id):
+    c = Contrato.query.get_or_404(id)
+    if request.method == "GET": return jsonify(c.to_dict())
+
     if request.method == "PATCH":
-        d = request.get_json(force=True)
+        d = request.get_json()
         cambios = []
-
+        if 'observaciones' in d: c.observaciones = d['observaciones']
         if 'numero_contrato' in d and d['numero_contrato'] != c.numero_contrato:
-            cambios.append(f"N°: {c.numero_contrato} -> {d['numero_contrato']}")
+            cambios.append(f"N° Contrato: {c.numero_contrato} -> {d['numero_contrato']}")
             c.numero_contrato = d['numero_contrato']
-            
-        if 'observaciones' in d:
-            c.observaciones = d.get('observaciones')
-
+        
+        # Cambio de Estado
         if 'estado' in d and d['estado'] != c.estado:
-            nuevo_estado = d['estado']
-            cambios.append(f"Estado: {c.estado} -> {nuevo_estado}")
-            c.estado = nuevo_estado
+            viejo = c.estado
+            nuevo = d['estado']
+            c.estado = nuevo
+            cambios.append(f"Estado {viejo} -> {nuevo}")
             
-            if nuevo_estado in ['rescindido', 'inactivo']:
-                cuotas_eliminadas = Cuota.query.filter(
-                    Cuota.contrato_id == c.id, 
-                    Cuota.estado.in_(['pendiente', 'vencida'])
-                ).delete(synchronize_session=False)
-                
-                cambios.append(f"Se eliminaron {cuotas_eliminadas} cuotas pendientes.")
-                
-                if nuevo_estado == 'rescindido':
-                    c.lote.estado = 'disponible'
-                    cambios.append(f"Lote {c.lote.numero_lote} liberado.")
+            if nuevo == 'rescindido':
+                c.lote.estado = 'disponible'
+                Cuota.query.filter(Cuota.contrato_id == c.id, Cuota.estado != 'pagada').delete()
+                cambios.append("Lote liberado y deuda eliminada")
 
         db.session.commit()
-        if cambios:
-            registrar_auditoria("EDITAR", "Contrato", f"ID {c.id}: " + "; ".join(cambios))
+        if cambios: registrar_auditoria("EDITAR", "Contrato", f"ID {c.id}: {'; '.join(cambios)}")
+        return jsonify({"ok": True})
 
-        return jsonify({"ok": True, "message": "Contrato actualizado"})
-        
-    return jsonify(c.to_dict())
+# --- GENERACIÓN DE PDF ---
 
 @bp.route("/admin/inventario/contrato_pdf/<int:contrato_id>")
 @login_required
 def generar_contrato_pdf(contrato_id):
-    contrato = Contrato.query.get_or_404(contrato_id)
-    cliente = contrato.cliente
-    lote = contrato.lote
-    empresa_nombre = get_param('EMPRESA_NOMBRE', 'INMOBILIARIA TU HOGAR S.A.')
-    try: valor_letras = num2words(int(contrato.valor_total), lang='es').upper()
-    except: valor_letras = str(int(contrato.valor_total))
-
-    class PDF(FPDF):
-        def header(self):
-            self.set_font('Helvetica', 'B', 14); self.cell(0, 10, clean('CONTRATO DE COMPRA-VENTA'), 0, 1, 'C'); self.ln(5)
+    c = Contrato.query.get_or_404(contrato_id)
     
-    pdf = PDF(); pdf.add_page(); pdf.set_font('Helvetica', '', 10)
-    txt = f"En la fecha {contrato.fecha_contrato}, entre {empresa_nombre} y {cliente.nombre} {cliente.apellido} con CI {cliente.documento}, acuerdan la venta del Lote {lote.numero_lote} Manzana {lote.manzana} por Gs. {int(contrato.valor_total):,} ({valor_letras})."
-    pdf.multi_cell(0, 5, clean(txt))
-    return Response(pdf.output(dest='S').encode('latin-1'), mimetype="application/pdf")
+    # Datos Generales
+    empresa = get_param('EMPRESA_NOMBRE', 'INMOBILIARIA VON KNOBLOCH')
+    ciudad_empresa = get_param('EMPRESA_CIUDAD', 'Encarnación')
+    
+    # Datos Cliente
+    cliente_nombre = f"{c.cliente.nombre} {c.cliente.apellido}"
+    cliente_doc = c.cliente.documento
+    cliente_dir = c.cliente.direccion or "Asunción, Paraguay"
+    
+    # Datos Lote
+    lote_nro = c.lote.numero_lote
+    manzana = c.lote.manzana
+    fraccionamiento = c.lote.fraccionamiento.nombre
+    ciudad_lote = c.lote.fraccionamiento.ciudad.nombre if c.lote.fraccionamiento.ciudad else "N/A"
+    superficie = c.lote.metros_cuadrados
+    
+    # Datos Financieros
+    moneda = "Gs." if c.moneda == 'GS' else "USD"
+    total_fmt = f"{moneda} {int(c.valor_total):,}".replace(',', '.')
+    entrega_fmt = f"{moneda} {int(c.cuota_inicial):,}".replace(',', '.')
+    cuota_fmt = f"{moneda} {int(c.valor_cuota):,}".replace(',', '.')
+    saldo = float(c.valor_total) - float(c.cuota_inicial)
+    saldo_fmt = f"{moneda} {int(saldo):,}".replace(',', '.')
+    
+    # Convertir a letras
+    try:
+        total_letras = num2words(c.valor_total, lang='es').upper()
+    except:
+        total_letras = "......................."
+
+    # Configuración PDF
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_margins(25, 25, 25)
+    
+    # Encabezado
+    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(0, 10, clean("CONTRATO PRIVADO DE COMPRA-VENTA"), 0, 1, 'C')
+    pdf.ln(10)
+    
+    # Cuerpo del Contrato
+    pdf.set_font('Arial', '', 11)
+    
+    texto_intro = f"""En la ciudad de {clean(ciudad_empresa)}, República del Paraguay, a los {c.fecha_contrato.day} días del mes de {c.fecha_contrato.month} del año {c.fecha_contrato.year}, se reúnen para celebrar el presente contrato:
+
+POR UNA PARTE: La firma {clean(empresa)}, en adelante denominada "LA VENDEDORA".
+
+Y POR OTRA PARTE: El/La Sr./Sra. {clean(cliente_nombre)}, con Documento de Identidad N° {cliente_doc}, domiciliado en {clean(cliente_dir)}, en adelante denominado "EL COMPRADOR".
+
+Ambas partes convienen en celebrar el presente CONTRATO DE COMPRA-VENTA DE INMUEBLE, sujeto a las siguientes cláusulas y condiciones:
+"""
+    pdf.multi_cell(0, 6, texto_intro)
+    pdf.ln(5)
+    
+    texto_clausulas = f"""PRIMERA - OBJETO: LA VENDEDORA da en venta a EL COMPRADOR un lote de terreno individualizado como Lote N° {clean(lote_nro)} de la Manzana {clean(manzana)}, perteneciente al Fraccionamiento denominado "{clean(fraccionamiento)}", situado en el distrito de {clean(ciudad_lote)}, con una superficie de {superficie} m².
+
+SEGUNDA - PRECIO Y FORMA DE PAGO: El precio total de la venta se fija en la suma de {clean(total_fmt)} ({clean(total_letras)}), que EL COMPRADOR se obliga a abonar de la siguiente manera:
+a) Una entrega inicial de {clean(entrega_fmt)} a la firma del presente contrato.
+b) El saldo de {clean(saldo_fmt)}, pagadero en {c.cantidad_cuotas} cuotas mensuales y consecutivas de {clean(cuota_fmt)} cada una.
+
+TERCERA - VENCIMIENTOS: Las cuotas vencerán el día {c.fecha_contrato.day} de cada mes. La falta de pago de tres (3) cuotas consecutivas o alternadas facultará a LA VENDEDORA a rescindir el presente contrato de pleno derecho, sin necesidad de interpelación judicial o extrajudicial alguna.
+
+CUARTA - USO: El inmueble objeto de este contrato será destinado exclusivamente para uso {clean(c.uso or 'VIVIENDA')}, obligándose EL COMPRADOR a respetar las normas municipales vigentes.
+
+QUINTA - JURISDICCIÓN: Para todos los efectos legales derivados de este contrato, las partes se someten a la jurisdicción de los Tribunales de la ciudad de {clean(ciudad_empresa)}, renunciando a cualquier otro fuero que pudiera corresponderles.
+
+En prueba de conformidad, se firman dos ejemplares de un mismo tenor y a un solo efecto, en el lugar y fecha indicados al principio.
+"""
+    pdf.multi_cell(0, 6, texto_clausulas)
+    
+    pdf.ln(30)
+    
+    # Firmas
+    y = pdf.get_y()
+    
+    pdf.line(30, y, 90, y)
+    pdf.text(45, y + 5, "LA VENDEDORA")
+    
+    pdf.line(120, y, 180, y)
+    pdf.text(135, y + 5, "EL COMPRADOR")
+    
+    # Anexo: Tabla de Cuotas
+    pdf.add_page()
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 10, "ANEXO: PLAN DE PAGOS", 0, 1, 'C')
+    pdf.ln(5)
+    
+    pdf.set_font('Arial', 'B', 10)
+    pdf.set_fill_color(230, 230, 230)
+    pdf.cell(30, 8, "Nro Cuota", 1, 0, 'C', True)
+    pdf.cell(50, 8, "Vencimiento", 1, 0, 'C', True)
+    pdf.cell(50, 8, "Monto", 1, 1, 'C', True)
+    pdf.ln()
+    
+    pdf.set_font('Arial', '', 10)
+    for cuota in c.cuotas:
+        pdf.cell(30, 7, str(cuota.numero_cuota), 1, 0, 'C')
+        pdf.cell(50, 7, cuota.fecha_vencimiento.strftime("%d/%m/%Y"), 1, 0, 'C')
+        pdf.cell(50, 7, f"{int(cuota.valor_cuota):,}".replace(',', '.'), 1, 1, 'R')
+        pdf.ln()
+
+    return Response(pdf.output(dest='S').encode('latin-1'), mimetype="application/pdf", headers={'Content-Disposition':f'inline;filename=Contrato_{c.numero_contrato}.pdf'})
+
+# --- APIS AUXILIARES (LOTES Y FRACCIONAMIENTOS) ---
+
+@bp.route("/api/admin/fraccionamientos/<int:fid>/lotes-disponibles")
+@login_required
+def api_lotes_disponibles_frac(fid):
+    # Usado por el formulario de nuevo contrato
+    lotes = Lote.query.filter(
+        Lote.fraccionamiento_id == fid,
+        Lote.estado.in_(["disponible", "reservado"]),
+        Lote.activo == True
+    ).all()
+    return jsonify([{"id": l.id, "texto": f"M{l.manzana} L{l.numero_lote} - Gs. {int(l.precio):,}", "precio": float(l.precio)} for l in lotes])
+
+@bp.route("/api/admin/lotes/<int:lote_id>/precios", methods=["GET", "POST"])
+@login_required
+def api_lista_precios_lote(lote_id):
+    if request.method == "GET":
+        precios = ListaPrecioLote.query.filter_by(lote_id=lote_id).all()
+        return jsonify([p.to_dict() for p in precios])
+    
+    if request.method == "POST":
+        d = request.json
+        p = ListaPrecioLote(
+            lote_id=lote_id,
+            condicion_pago_id=d['condicion_pago_id'],
+            cantidad_cuotas=d['cantidad_cuotas'],
+            precio_cuota=d['precio_cuota'],
+            precio_total=d['precio_total']
+        )
+        db.session.add(p)
+        db.session.commit()
+        registrar_auditoria("CREAR", "ListaPrecioLote", f"Plan de pago agregado a lote ID {lote_id}")
+        return jsonify({"ok": True})
+
+@bp.route("/api/admin/lista-precios/<int:id>", methods=["DELETE"])
+@login_required
+def api_eliminar_precio_lote(id):
+    p = ListaPrecioLote.query.get_or_404(id)
+    db.session.delete(p)
+    db.session.commit()
+    registrar_auditoria("ELIMINAR", "ListaPrecioLote", f"Plan de pago eliminado ID {id}")
+    return jsonify({"ok": True})

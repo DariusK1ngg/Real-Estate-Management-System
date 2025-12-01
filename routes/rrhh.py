@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from extensions import db
 from models import Funcionario, Cargo, Role
 from datetime import date, datetime
-from utils import admin_required
+from utils import admin_required, registrar_auditoria # <--- IMPORTAR
 
 bp = Blueprint('rrhh', __name__)
 
@@ -52,6 +52,7 @@ def api_admin_funcionarios():
 
         db.session.add(nuevo_funcionario)
         db.session.commit()
+        registrar_auditoria("CREAR", "Funcionario", f"Alta de usuario: {nuevo_funcionario.usuario}") # <--- AUDITORIA
         return jsonify(nuevo_funcionario.to_dict()), 201
     
     funcionarios = Funcionario.query.order_by(Funcionario.nombre).all()
@@ -89,12 +90,15 @@ def api_admin_funcionario_detalle(fid):
                     funcionario.roles.append(role)
         
         db.session.commit()
+        registrar_auditoria("EDITAR", "Funcionario", f"Modificación de usuario: {funcionario.usuario}") # <--- AUDITORIA
         return jsonify(funcionario.to_dict())
 
     if request.method == "DELETE":
         if current_user.id == fid: return jsonify({"error": "No te puedes eliminar a ti mismo."}), 400
+        target_name = funcionario.usuario
         db.session.delete(funcionario)
         db.session.commit()
+        registrar_auditoria("ELIMINAR", "Funcionario", f"Baja de usuario: {target_name}") # <--- AUDITORIA
         return jsonify({"message": "Funcionario eliminado."})
 
     roles = [r.name for r in funcionario.roles]
@@ -112,6 +116,7 @@ def api_admin_cargos():
         if Cargo.query.filter_by(nombre=data['nombre']).first(): return jsonify({"error": "Ese cargo ya existe."}), 400
         nuevo_cargo = Cargo(nombre=data['nombre'])
         db.session.add(nuevo_cargo); db.session.commit()
+        registrar_auditoria("CREAR", "Cargo", f"Nuevo cargo: {nuevo_cargo.nombre}") # <--- AUDITORIA
         return jsonify(nuevo_cargo.to_dict()), 201
     return jsonify([c.to_dict() for c in Cargo.query.order_by(Cargo.nombre).all()])
 
@@ -126,9 +131,11 @@ def api_admin_cargo_detalle(cid):
         if Cargo.query.filter(Cargo.id != cid, Cargo.nombre == data['nombre']).first(): return jsonify({"error": "Ese cargo ya existe."}), 400
         cargo.nombre = data['nombre']
         db.session.commit()
+        registrar_auditoria("EDITAR", "Cargo", f"Edición de cargo ID {cid}") # <--- AUDITORIA
         return jsonify(cargo.to_dict())
     if request.method == "DELETE":
         if cargo.funcionarios: return jsonify({"error": "No se puede eliminar, está asignado a funcionarios."}), 400
         db.session.delete(cargo)
         db.session.commit()
+        registrar_auditoria("ELIMINAR", "Cargo", f"Baja de cargo ID {cid}") # <--- AUDITORIA
         return jsonify({"message": "Cargo eliminado."})

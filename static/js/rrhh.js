@@ -7,10 +7,8 @@ document.addEventListener('DOMContentLoaded', function() {
         tbodyCargos.addEventListener('click', function(event) {
             const target = event.target.closest('button');
             if (!target) return;
-
             const cargoId = target.dataset.id;
             if (!cargoId) return;
-
             if (target.classList.contains('btn-edit-cargo')) {
                 const cargo = allCargos.find(c => c.id == cargoId);
                 if (cargo) abrirModalCargo(cargo);
@@ -28,10 +26,8 @@ document.addEventListener('DOMContentLoaded', function() {
         tbodyFuncionarios.addEventListener('click', function(event) {
             const target = event.target.closest('button');
             if (!target) return;
-
             const funcionarioId = target.dataset.id;
             if (!funcionarioId) return;
-
             if (target.classList.contains('btn-edit-funcionario')) {
                 const funcionario = allFuncionarios.find(f => f.id == funcionarioId);
                 if (funcionario) abrirModalFuncionario(funcionario);
@@ -54,8 +50,6 @@ function abrirModalCargo(cargo = null) {
     const form = document.getElementById('formCargo');
     form.reset();
     cargoEditandoId = null;
-    
-    // **CORRECCIÓN AQUÍ** - Usamos document.getElementById para buscar el título
     const modalTitle = document.getElementById('modalCargoTitle');
 
     if (cargo) {
@@ -66,6 +60,7 @@ function abrirModalCargo(cargo = null) {
     } else {
         modalTitle.textContent = 'Nuevo Cargo';
     }
+    // Llamamos a la función global corregida
     abrirModal('modalCargo');
 }
 
@@ -75,22 +70,27 @@ async function guardarCargo() {
     const url = cargoEditandoId ? `/api/admin/cargos/${cargoEditandoId}` : '/api/admin/cargos';
     const method = cargoEditandoId ? 'PUT' : 'POST';
 
-    const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    const result = await response.json();
-    if (response.ok) {
-        alert('Cargo guardado.');
-        cerrarModal('modalCargo');
-        cargarCargos();
-    } else { alert(`Error: ${result.error}`); }
+    try {
+        const response = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        if (response.ok) {
+            alert('Cargo guardado.');
+            // Llamamos a la función global corregida
+            cerrarModal('modalCargo');
+            cargarCargos();
+        } else { alert(`Error: ${result.error}`); }
+    } catch (e) {
+        alert("Error de red al guardar cargo.");
+    }
 }
 
 async function cargarCargos() {
     const tbody = document.getElementById('tbodyCargos');
-    tbody.innerHTML = '<tr><td colspan="2">Cargando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="2" class="text-center">Cargando...</td></tr>';
     try {
         const response = await fetch('/api/admin/cargos');
         allCargos = await response.json(); 
@@ -127,8 +127,6 @@ async function abrirModalFuncionario(funcionario = null) {
     const form = document.getElementById('formFuncionario');
     form.reset();
     funcionarioEditandoId = null;
-    
-    // **CORRECCIÓN AQUÍ** - Usamos document.getElementById para buscar el título
     const modalTitle = document.getElementById('modalFuncionarioTitle');
 
     await Promise.all([
@@ -139,7 +137,6 @@ async function abrirModalFuncionario(funcionario = null) {
     if (funcionario) {
         funcionarioEditandoId = funcionario.id;
         modalTitle.textContent = 'Editar Funcionario';
-        
         form.querySelector('[name="nombre"]').value = funcionario.nombre;
         form.querySelector('[name="apellido"]').value = funcionario.apellido;
         form.querySelector('[name="documento"]').value = funcionario.documento;
@@ -154,14 +151,13 @@ async function abrirModalFuncionario(funcionario = null) {
             form.querySelectorAll('#roles-container input[type="checkbox"]').forEach(checkbox => {
                 checkbox.checked = userRoles.includes(checkbox.dataset.rolName);
             });
-        } catch (e) {
-            console.error("Error cargando roles del funcionario", e);
-        }
+        } catch (e) { console.error("Error roles", e); }
 
     } else {
         modalTitle.textContent = 'Nuevo Funcionario';
         form.querySelector('[name="fecha_ingreso"]').valueAsDate = new Date();
     }
+    // Llamamos a la función global corregida
     abrirModal('modalFuncionario');
 }
 
@@ -171,12 +167,10 @@ async function guardarFuncionario() {
 
     data.roles_ids = Array.from(form.querySelectorAll('#roles-container input:checked')).map(cb => cb.value);
     data.es_vendedor = form.querySelector('#es_vendedor').checked;
-
     if (!data.password) delete data.password;
 
     const url = funcionarioEditandoId ? `/api/admin/funcionarios/${funcionarioEditandoId}` : '/api/admin/funcionarios';
     const method = funcionarioEditandoId ? 'PUT' : 'POST';
-    
     if(funcionarioEditandoId) data.nombre_completo = `${data.nombre} ${data.apellido}`;
 
     try {
@@ -188,18 +182,18 @@ async function guardarFuncionario() {
         const result = await response.json();
         if (response.ok) {
             alert('Funcionario guardado.');
+            // Llamamos a la función global corregida
             cerrarModal('modalFuncionario');
             cargarFuncionarios();
         } else { alert(`Error: ${result.error}`); }
     } catch (e) {
-        alert("Ocurrió un error al guardar. Revisa la consola para más detalles.");
-        console.error(e);
+        alert("Ocurrió un error al guardar funcionario.");
     }
 }
 
 async function cargarFuncionarios() {
     const tbody = document.getElementById('tbodyFuncionarios');
-    tbody.innerHTML = '<tr><td colspan="6">Cargando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando...</td></tr>';
     try {
         const response = await fetch('/api/admin/funcionarios');
         allFuncionarios = await response.json(); 
@@ -219,7 +213,7 @@ async function cargarFuncionarios() {
                 </tr>`;
         });
     } catch(e) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-danger">Error al cargar los funcionarios.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-danger">Error al cargar funcionarios.</td></tr>';
     }
 }
 
@@ -233,7 +227,6 @@ async function eliminarFuncionario(id) {
     } else { alert(`Error: ${result.error}`); }
 }
 
-// --- FUNCIONES AUXILIARES ---
 async function poblarSelectCargos(form) {
     const select = form.querySelector('[name="cargo_id"]');
     select.innerHTML = '<option>Cargando...</option>';
@@ -242,9 +235,7 @@ async function poblarSelectCargos(form) {
         const cargos = await response.json();
         select.innerHTML = '';
         cargos.forEach(c => select.innerHTML += `<option value="${c.id}">${c.nombre}</option>`);
-    } catch (e) {
-        select.innerHTML = '<option class="text-danger">Error al cargar</option>';
-    }
+    } catch (e) { select.innerHTML = '<option class="text-danger">Error</option>'; }
 }
 
 async function poblarCheckboxesRoles(form) {
@@ -261,7 +252,29 @@ async function poblarCheckboxesRoles(form) {
                     <label class="form-check-label" for="rol-${r.id}">${r.name}</label>
                 </div>`;
         });
-    } catch (e) {
-        container.innerHTML = '<span class="text-danger">Error al cargar roles</span>';
-    }
+    } catch (e) { container.innerHTML = '<span class="text-danger">Error</span>'; }
 }
+
+// =========================================================
+// CORRECCIÓN: FUNCIONES DE MODAL MANUALES (SIN BOOTSTRAP JS)
+// =========================================================
+// Esto asegura que funcione con tu CSS personalizado y arregla
+// el problema de que no se cierra o se oscurece la pantalla.
+
+window.abrirModal = function(id) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.style.display = 'block'; // Fuerza la visualización manual
+    }
+};
+
+window.cerrarModal = function(id) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.style.display = 'none'; // Fuerza el ocultamiento manual
+    }
+    
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = 'auto';
+};

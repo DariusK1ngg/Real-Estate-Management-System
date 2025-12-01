@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from extensions import db
 from models import Gasto, CategoriaGasto, Proveedor, Caja, MovimientoCaja, CuentaBancaria, DepositoBancario
 from datetime import datetime
-from utils import role_required
+from utils import role_required, registrar_auditoria # <--- IMPORTAR
 
 bp = Blueprint('gastos', __name__)
 
@@ -40,6 +40,7 @@ def api_gastos():
         )
         db.session.add(gasto)
         db.session.commit()
+        registrar_auditoria("CREAR", "Gasto", f"Nuevo gasto registrado por Gs. {gasto.monto:,.0f} (Prov ID: {gasto.proveedor_id})") # <--- AUDITORIA
         return jsonify(gasto.to_dict()), 201
     
     gastos = Gasto.query.order_by(Gasto.fecha_factura.desc()).all()
@@ -53,6 +54,7 @@ def api_gasto_delete(gid):
     if gasto.estado == 'anulado': return jsonify({"error": "Ya anulado"}), 400
     gasto.estado = 'anulado'
     db.session.commit()
+    registrar_auditoria("ANULAR", "Gasto", f"Se anuló el gasto ID {gid}") # <--- AUDITORIA
     return jsonify({"message": "Anulado"})
 
 @bp.route("/api/admin/gastos/<int:gasto_id>/pagar", methods=["POST"])
@@ -97,11 +99,13 @@ def api_pagar_gasto(gasto_id):
         gasto.estado = 'pagado'
         gasto.fecha_pago = fecha_pago
         db.session.commit()
+        registrar_auditoria("PAGAR", "Gasto", f"Pago de gasto ID {gasto.id} por {gasto.monto:,.0f} vía {metodo}") # <--- AUDITORIA
         return jsonify({"message": "Pago registrado"})
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
+# --- PROVEEDORES ---
 @bp.route("/api/admin/proveedores", methods=["GET", "POST"])
 @login_required
 @role_required('Admin', 'Empleado')
@@ -110,6 +114,7 @@ def api_proveedores():
         data = request.json
         p = Proveedor(razon_social=data['razon_social'], ruc=data['ruc'], telefono=data.get('telefono'), direccion=data.get('direccion'))
         db.session.add(p); db.session.commit()
+        registrar_auditoria("CREAR", "Proveedor", f"Alta proveedor {p.razon_social}") # <--- AUDITORIA
         return jsonify(p.to_dict())
     return jsonify([p.to_dict() for p in Proveedor.query.all()])
 
@@ -127,14 +132,17 @@ def api_proveedor_detalle(pid):
         proveedor.telefono = data.get('telefono', proveedor.telefono)
         proveedor.direccion = data.get('direccion', proveedor.direccion)
         db.session.commit()
+        registrar_auditoria("EDITAR", "Proveedor", f"Modificación proveedor ID {pid}") # <--- AUDITORIA
         return jsonify(proveedor.to_dict())
     if request.method == "DELETE":
         if proveedor.gastos: return jsonify({"error": "No se puede eliminar, tiene gastos asociados."}), 400
         db.session.delete(proveedor)
         db.session.commit()
+        registrar_auditoria("ELIMINAR", "Proveedor", f"Baja proveedor ID {pid}") # <--- AUDITORIA
         return jsonify({"message": "Proveedor eliminado"})
     return jsonify(proveedor.to_dict())
 
+# --- CATEGORÍAS ---
 @bp.route("/api/admin/categorias-gasto", methods=["GET", "POST"])
 @login_required
 @role_required('Admin', 'Empleado')
@@ -142,6 +150,7 @@ def api_categorias():
     if request.method == "POST":
         c = CategoriaGasto(nombre=request.json['nombre'], descripcion=request.json.get('descripcion'))
         db.session.add(c); db.session.commit()
+        registrar_auditoria("CREAR", "CategoriaGasto", f"Nueva categoría: {c.nombre}") # <--- AUDITORIA
         return jsonify(c.to_dict())
     return jsonify([c.to_dict() for c in CategoriaGasto.query.all()])
 
@@ -157,9 +166,11 @@ def api_categoria_gasto_detalle(cid):
         categoria.nombre = data.get('nombre', categoria.nombre)
         categoria.descripcion = data.get('descripcion', categoria.descripcion)
         db.session.commit()
+        registrar_auditoria("EDITAR", "CategoriaGasto", f"Editada categoría ID {cid}") # <--- AUDITORIA
         return jsonify(categoria.to_dict())
     if request.method == "DELETE":
         if categoria.gastos: return jsonify({"error": "No se puede eliminar, tiene gastos asociados."}), 400
         db.session.delete(categoria); db.session.commit()
+        registrar_auditoria("ELIMINAR", "CategoriaGasto", f"Eliminada categoría ID {cid}") # <--- AUDITORIA
         return jsonify({"message": "Categoría eliminada"})
     return jsonify(categoria.to_dict())

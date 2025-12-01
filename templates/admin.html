@@ -16,7 +16,7 @@
         <i class="fas fa-arrow-left"></i>
         <span>Volver al Menú</span>
     </a>
-<div class="filter-container">
+    <div class="filter-container">
         <label for="admin-frac-filter">Ver Fraccionamiento:</label>
         <select id="admin-frac-filter">
             <option value="">-- Todos --</option>
@@ -101,10 +101,15 @@
       <div class="row" style="display:flex; gap:8px; flex-direction:row">
         <button id="btn-copiar" class="info" title="Ctrl+C">Copiar</button>
         <button id="btn-pegar" class="info" title="Ctrl+V">Pegar</button>
+      </div>
+    </div>
   </div>
 
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+  
   <script src="/static/js/main.js"></script>
   <script src="/static/js/admin.js"></script>
 </body>

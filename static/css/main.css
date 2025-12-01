@@ -421,3 +421,152 @@ body {
     padding: 4px 8px;
     font-size: 12px;
 }
+
+:root {
+    --primary-color: #2e7dff;
+    --sidebar-bg: #1a1c23;
+    --sidebar-width: 260px;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f4f6f9;
+    margin: 0;
+    overflow-x: hidden;
+}
+
+/* Sidebar */
+.app-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: var(--sidebar-width);
+    background-color: var(--sidebar-bg);
+    color: white;
+    position: fixed;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.sidebar .logo {
+    padding: 20px;
+    background-color: rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+.main-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.nav-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    color: #aeb4c6;
+    text-decoration: none;
+    transition: 0.3s;
+    border-left: 3px solid transparent;
+}
+
+.nav-link:hover, .nav-link.active {
+    background-color: rgba(255,255,255,0.05);
+    color: white;
+    border-left-color: var(--primary-color);
+}
+
+/* Submenu */
+.has-submenu .submenu {
+    display: none;
+    background-color: rgba(0,0,0,0.3);
+    list-style: none;
+    padding: 0;
+}
+
+.has-submenu.active .submenu {
+    display: block;
+}
+
+.submenu a {
+    display: block;
+    padding: 10px 20px 10px 50px;
+    color: #8a92a9;
+    text-decoration: none;
+    font-size: 0.9em;
+}
+
+.submenu a:hover {
+    color: white;
+}
+
+.arrow {
+    font-size: 0.8em;
+    transition: transform 0.3s;
+}
+
+.has-submenu.active .arrow {
+    transform: rotate(180deg);
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    display: flex;
+    flex-direction: column;
+}
+
+.topbar {
+    background: white;
+    padding: 15px 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.breadcrumb {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin: 0;
+}
+
+.content-wrapper {
+    padding: 30px;
+}
+
+/* BUSCADOR GLOBAL (Estilos Nuevos) */
+.search-results-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 5px 5px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1050;
+    display: none;
+}
+
+.search-result-item:hover {
+    background-color: #f8f9fa;
+}
+
+/* Utilidades Input Money */
+.input-money {
+    text-align: right;
+    font-weight: 500;
+}
+
+/* DataTables Customization */
+.dataTables_wrapper .dataTables_length select {
+    padding-right: 30px; /* Bootstrap fix */
+}

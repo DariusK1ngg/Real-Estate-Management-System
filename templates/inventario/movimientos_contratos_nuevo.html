@@ -5,88 +5,173 @@ Gestión de Inventario / Nuevo Contrato
 {% endblock %}
 
 {% block content %}
-<div class="card shadow-sm">
+<div class="card shadow-lg">
     <div class="card-header bg-primary text-white">
-        <h4 class="card-title mb-0"><i class="fas fa-file-signature"></i> Cargar Nuevo Contrato</h4>
+        <h4 class="mb-0"><i class="fas fa-file-contract"></i> Carga de Contrato</h4>
     </div>
     <div class="card-body">
-        <form id="formNuevoContrato">
-            <div class="row mb-4">
-                <div class="col-md-4">
-                    <label class="form-label fw-bold">Número de Contrato</label>
-                    <input type="text" name="numero_contrato" class="form-control" required>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-bold">Fecha de Firma</label>
-                    <input type="date" name="fecha_contrato" class="form-control" value="{{ now }}" required>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-bold">Tipo de Operación</label>
-                    <select name="tipo_contrato" class="form-select">
-                        <option value="venta">Venta (Lote Vendido)</option>
-                        <option value="reserva">Reserva (Lote Reservado)</option>
-                        <option value="alquiler">Alquiler</option>
-                    </select>
-                </div>
-            </div>
+        <form id="formContrato">
+            <div class="row">
+                <div class="col-md-7 border-end">
+                    
+                    <div class="row mb-2">
+                        <div class="col-md-4">
+                            <label class="fw-bold">Nro. de Contrato:</label>
+                            <input type="text" name="numero_contrato" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="fw-bold">Cliente:</label>
+                            <select id="selectCliente" name="cliente_id" class="form-select form-select-sm" style="width:100%" required></select>
+                        </div>
+                    </div>
 
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold">Cliente Titular</label>
-                    <select class="form-select" id="selectCliente" name="cliente_id" required style="width: 100%"></select>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-bold">Lote / Inmueble</label>
-                    <select class="form-select" id="selectLote" name="lote_id" required style="width: 100%"></select>
-                </div>
-            </div>
+                    <div class="row mb-2">
+                        <div class="col-md-6">
+                            <label class="fw-bold">Fraccionamiento / Inmueble:</label>
+                            <select id="selectFraccionamiento" class="form-select form-select-sm" required>
+                                <option value="">-- Seleccione Primero --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="fw-bold">Lote:</label>
+                            <select id="selectLote" name="lote_id" class="form-select form-select-sm" required disabled>
+                                <option value="">-- Seleccione Fraccionamiento --</option>
+                            </select>
+                        </div>
+                    </div>
 
-            <div class="mb-4 p-3 bg-light border rounded" id="seccion-precios" style="display:none;">
-                <label class="form-label text-primary fw-bold"><i class="fas fa-tags"></i> Planes de Financiación Disponibles</label>
-                <select class="form-select" id="selectPrecio" name="precio_id">
-                    <option value="">-- Personalizado --</option>
-                </select>
-            </div>
+                    <div class="row mb-2">
+                        <div class="col-md-6">
+                            <label class="fw-bold">Vendedor:</label>
+                            <select id="selectVendedor" name="vendedor_id" class="form-select form-select-sm"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label>Uso:</label>
+                            <select name="uso" class="form-select form-select-sm">
+                                <option value="VIVIENDA">VIVIENDA</option>
+                                <option value="COMERCIAL">COMERCIAL</option>
+                                <option value="RURAL">RURAL</option>
+                            </select>
+                        </div>
+                    </div>
 
-            <h5 class="mb-3 border-bottom pb-2">Detalles Financieros</h5>
-            <div class="row mb-3">
-                <div class="col-md-3">
-                    <label class="form-label fw-bold">Monto Total del Contrato</label>
-                    <div class="input-group">
-                        <span class="input-group-text">Gs.</span>
-                        <input type="text" id="valor_total" name="valor_total" class="form-control input-money fw-bold" required>
+                    <div class="row mb-2">
+                        <div class="col-md-6">
+                            <label>Fecha Inicio:</label>
+                            <input type="date" id="fecha_contrato" name="fecha_contrato" class="form-control form-control-sm" value="{{ now }}" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-2 bg-light p-2 rounded">
+                        <label class="fw-bold text-primary">Lista de Precio (Plan):</label>
+                        <select id="selectPlan" class="form-select form-select-sm">
+                            <option value="">-- Personalizado --</option>
+                        </select>
+                    </div>
+
+                    <div class="row mb-2">
+                        <div class="col-md-4">
+                            <label>Monto Total:</label>
+                            <input type="text" id="valor_total" class="form-control form-control-sm input-money fw-bold">
+                        </div>
+                        <div class="col-md-4">
+                            <label>Moneda:</label>
+                            <select name="moneda" class="form-select form-select-sm">
+                                <option value="GS">GUARANIES (GS)</option>
+                                <option value="USD">DOLARES (USD)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label>Frecuencia:</label>
+                            <select name="medida_tiempo" class="form-select form-select-sm">
+                                <option value="Mensual">Mensual</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-2">
+                        <div class="col-md-6">
+                            <label>Entrega Inicial:</label>
+                            <input type="text" id="cuota_inicial" class="form-control form-control-sm input-money" value="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label>Vencimiento Entrega:</label>
+                            <input type="date" name="fecha_vencimiento_entrega" class="form-control form-control-sm">
+                        </div>
+                    </div>
+
+                    <div class="row mb-2">
+                        <div class="col-md-4">
+                            <label class="fw-bold">Cuotas:</label>
+                            <input type="number" id="cantidad_cuotas" class="form-control form-control-sm" value="130">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="fw-bold">Valor Cuota:</label>
+                            <input type="text" id="valor_cuota" class="form-control form-control-sm input-money fw-bold bg-white" readonly>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                             <button type="button" class="btn btn-info btn-sm w-100 text-white" onclick="calcularCuota()">Calcular</button>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h6 class="text-primary">Documentación Entregada</h6>
+                    <div class="row g-1 mb-3">
+                        <div class="col-md-6"><small>Modelo Contrato:</small>
+                            <select name="doc_modelo_contrato" class="form-select form-select-sm"><option>No entregado</option><option>Entregado</option></select>
+                        </div>
+                        <div class="col-md-6"><small>Doc. Identidad:</small>
+                            <select name="doc_identidad" class="form-select form-select-sm"><option>No entregado</option><option>Entregado</option></select>
+                        </div>
+                        <div class="col-md-6"><small>Factura Servicios:</small>
+                            <select name="doc_factura_servicios" class="form-select form-select-sm"><option>No entregado</option><option>Entregado</option></select>
+                        </div>
+                        <div class="col-md-6"><small>Comp. Ingresos:</small>
+                            <select name="doc_ingresos" class="form-select form-select-sm"><option>No entregado</option><option>Entregado</option></select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Observación:</label>
+                        <textarea name="observaciones" class="form-control form-control-sm" rows="2"></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-secondary" onclick="generarCuotas()">
+                            Generar Cuotas (Vista Previa)
+                        </button>
+                    </div>
+
+                </div>
+
+                <div class="col-md-5 bg-light p-3 rounded">
+                    <h5 class="text-center mb-3">Cuotas a Generarse</h5>
+                    
+                    <div class="table-responsive bg-white border" style="height: 500px; overflow-y: auto;">
+                        <table class="table table-sm table-bordered table-striped text-center mb-0 no-datatable">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    <th>Cuota</th>
+                                    <th>Vencimiento</th>
+                                    <th>Monto</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyCuotas">
+                                </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-2 fw-bold text-end">
+                        Total Cuotas: <span id="totalCuotasSum">0</span>
+                    </div>
+
+                    <div class="mt-4 d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg" id="btnGuardar" disabled>
+                            <i class="fas fa-save"></i> GUARDAR CONTRATO
+                        </button>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold">Entrega Inicial</label>
-                    <div class="input-group">
-                        <span class="input-group-text">Gs.</span>
-                        <input type="text" name="cuota_inicial" class="form-control input-money" value="0">
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold">Cantidad de Cuotas</label>
-                    <input type="number" id="cantidad_cuotas" name="cantidad_cuotas" class="form-control" required>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold">Valor de la Cuota</label>
-                    <div class="input-group">
-                        <span class="input-group-text">Gs.</span>
-                        <input type="text" id="valor_cuota" name="valor_cuota" class="form-control input-money fw-bold" required>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mb-4">
-                <label class="form-label">Observaciones / Notas Adicionales</label>
-                <textarea name="observaciones" class="form-control" rows="2"></textarea>
-            </div>
-
-            <div class="d-flex justify-content-end gap-2">
-                <a href="{{ url_for('inventario.inventario_movimientos') }}" class="btn btn-secondary">Cancelar</a>
-                <button type="submit" class="btn btn-success btn-lg">
-                    <i class="fas fa-save"></i> Guardar Contrato
-                </button>
             </div>
         </form>
     </div>
@@ -96,5 +181,5 @@ Gestión de Inventario / Nuevo Contrato
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<script src="{{ url_for('static', filename='js/inventario_contrato_nuevo.js') }}"></script>
+<script src="{{ url_for('static', filename='js/inventario_contratos.js') }}"></script>
 {% endblock %}

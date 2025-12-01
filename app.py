@@ -7,7 +7,7 @@ from datetime import date
 import click
 
 # Importar Blueprints
-from routes import auth, base, rrhh, tesoreria, gastos, ventas, inventario, cobros, reportes, audit
+from routes import auth, base, rrhh, tesoreria, gastos, ventas, inventario, cobros, reportes, audit, search
 
 load_dotenv()
 
@@ -37,7 +37,8 @@ app.register_blueprint(ventas.bp)
 app.register_blueprint(inventario.bp)
 app.register_blueprint(cobros.bp)
 app.register_blueprint(reportes.bp)
-app.register_blueprint(audit.bp) # Nuevo módulo de auditoría
+app.register_blueprint(audit.bp)
+app.register_blueprint(search.bp)
 
 # Manejo de Errores
 @app.errorhandler(404)

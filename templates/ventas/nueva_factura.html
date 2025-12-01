@@ -16,7 +16,7 @@ Gestión de Ventas / Cargar Servicio
                     <div class="row mb-4">
                         <div class="col-md-5">
                             <label class="form-label fw-bold">1. Cliente</label>
-                            <select class="form-select" id="selectCliente" style="width: 100%"></select>
+                            <select class="form-select select2" id="selectCliente" style="width: 100%"></select>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold">2. Contrato Activo</label>
@@ -35,9 +35,9 @@ Gestión de Ventas / Cargar Servicio
                     <div class="row mb-3 align-items-end bg-light p-3 rounded">
                         <div class="col-md-8">
                             <label class="form-label fw-bold text-primary">3. Seleccionar Servicio del Catálogo</label>
-                            <select id="selectServicioCatalogo" class="form-select">
+                            <select id="selectServicioCatalogo" class="form-select select2">
                                 <option value="">-- Elegir --</option>
-                                </select>
+                            </select>
                         </div>
                         <div class="col-md-4">
                             <button type="button" class="btn btn-primary w-100" onclick="agregarItemDesdeCatalogo()">
@@ -82,7 +82,5 @@ Gestión de Ventas / Cargar Servicio
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="{{ url_for('static', filename='js/ventas.js') }}"></script>
 {% endblock %}

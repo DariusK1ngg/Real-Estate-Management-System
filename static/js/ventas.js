@@ -314,11 +314,18 @@ function calcularTotalGeneral() {
 }
 
 // ==========================================
-// C. HISTORIAL Y ELIMINACIÓN
+// C. HISTORIAL Y ELIMINACIÓN (CORREGIDO PARA DATATABLES)
 // ==========================================
 async function cargarHistorialServicios() {
-    const tbody = document.querySelector('#tablaVentas tbody');
+    const tableId = '#tablaVentas';
+    const tbody = document.querySelector(tableId + ' tbody');
     if (!tbody) return;
+
+    // 1. Si ya es DataTable, destruir la instancia antes de modificar el HTML
+    if ($.fn.DataTable.isDataTable(tableId)) {
+        $(tableId).DataTable().destroy();
+    }
+
     tbody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando...</td></tr>';
 
     try {
@@ -346,7 +353,17 @@ async function cargarHistorialServicios() {
             `;
             tbody.appendChild(tr);
         });
-    } catch (e) { console.error(e); }
+
+        // 2. Re-inicializar DataTable
+        $(tableId).DataTable({
+            language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' },
+            order: [[0, 'desc']] // Ordenar por fecha descendente
+        });
+
+    } catch (e) { 
+        console.error(e); 
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error de conexión</td></tr>';
+    }
 }
 
 window.eliminarCarga = async function(id) {

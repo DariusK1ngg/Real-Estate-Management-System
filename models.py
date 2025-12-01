@@ -4,7 +4,6 @@ from sqlalchemy import Enum
 from datetime import datetime, date
 
 # --- DEFINICIONES BASE ---
-
 class TipoDocumento(db.Model):
     __tablename__ = 'tipos_documentos'
     id = db.Column(db.Integer, primary_key=True)
@@ -57,7 +56,6 @@ class Barrio(db.Model):
     ciudad_id = db.Column(db.Integer, db.ForeignKey('ciudades.id'), nullable=False)
     def to_dict(self): return {"id": self.id, "nombre": self.nombre, "ciudad_id": self.ciudad_id, "ciudad_nombre": self.ciudad.nombre}
 
-# --- NUEVO MODELO: SERVICIOS ---
 class Servicio(db.Model):
     __tablename__ = 'servicios'
     id = db.Column(db.Integer, primary_key=True)
@@ -67,7 +65,6 @@ class Servicio(db.Model):
     def to_dict(self): return {"id": self.id, "nombre": self.nombre, "precio_defecto": float(self.precio_defecto), "activo": self.activo}
 
 # --- SEGURIDAD ---
-
 roles_funcionarios = db.Table('roles_funcionarios',
     db.Column('funcionario_id', db.Integer, db.ForeignKey('funcionarios.id'), primary_key=True),
     db.Column('role_id', db.Integer, db.ForeignKey('roles.id'), primary_key=True)
@@ -120,7 +117,6 @@ class Funcionario(db.Model, UserMixin):
     def to_dict(self): return {"id": self.id, "nombre_completo": f"{self.nombre} {self.apellido}", "nombre": self.nombre, "apellido": self.apellido, "documento": self.documento, "usuario": self.usuario, "cargo_id": self.cargo_id, "cargo_nombre": self.cargo.nombre if self.cargo else "N/A", "estado": self.estado, "roles": [role.name for role in self.roles]}
 
 # --- INMOBILIARIA ---
-
 class Fraccionamiento(db.Model):
     __tablename__ = "fraccionamientos"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -197,18 +193,51 @@ class Contrato(db.Model):
     numero_contrato = db.Column(db.String(50), nullable=False, unique=True)
     cliente_id = db.Column(db.Integer, db.ForeignKey("clientes.id"), nullable=False)
     lote_id = db.Column(db.Integer, db.ForeignKey("lotes.id"), nullable=False)
+    vendedor_id = db.Column(db.Integer, db.ForeignKey("funcionarios.id"), nullable=True)
     fecha_contrato = db.Column(db.Date, nullable=False)
+    uso = db.Column(db.String(50), nullable=True)
+    moneda = db.Column(db.String(10), default='GS')
+    medida_tiempo = db.Column(db.String(20), default='Mensual')
     valor_total = db.Column(db.Numeric(12, 2), nullable=False)
     cuota_inicial = db.Column(db.Numeric(12, 2), nullable=False)
+    fecha_vencimiento_entrega = db.Column(db.Date, nullable=True)
     cantidad_cuotas = db.Column(db.Integer, nullable=False)
     valor_cuota = db.Column(db.Numeric(12, 2), nullable=False)
+    doc_modelo_contrato = db.Column(db.String(20), default='No entregado')
+    doc_comp_interno = db.Column(db.String(20), default='No entregado')
+    doc_identidad = db.Column(db.String(20), default='No entregado')
+    doc_factura_servicios = db.Column(db.String(20), default='No entregado')
+    doc_ingresos = db.Column(db.String(20), default='No entregado')
+    # Eliminadas las comisiones aquí
     tipo_contrato = db.Column(Enum("venta", "reserva", "alquiler", name="tipo_contrato_enum"), nullable=False, default="venta")
     estado = db.Column(Enum("activo", "cancelado", "finalizado", "rescindido", "inactivo", name="estado_contrato_enum"), nullable=False, default="activo")
     observaciones = db.Column(db.Text, nullable=True)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
     cuotas = db.relationship("Cuota", backref="contrato", lazy=True, cascade="all, delete-orphan")
     pagos = db.relationship("Pago", backref="contrato", lazy=True, cascade="all, delete-orphan")
-    def to_dict(self): return {"id": self.id, "numero_contrato": self.numero_contrato, "cliente_id": self.cliente_id, "lote_id": self.lote_id, "fecha_contrato": self.fecha_contrato.isoformat() if self.fecha_contrato else None, "valor_total": float(self.valor_total), "cuota_inicial": float(self.cuota_inicial), "cantidad_cuotas": self.cantidad_cuotas, "valor_cuota": float(self.valor_cuota), "tipo_contrato": self.tipo_contrato, "estado": self.estado, "observaciones": self.observaciones, "fecha_creacion": self.fecha_creacion.isoformat() if self.fecha_creacion else None, "cliente_nombre": f"{self.cliente.nombre} {self.cliente.apellido}", "lote_info": f"{self.lote.manzana} - {self.lote.numero_lote}", "fraccionamiento": self.lote.fraccionamiento.nombre}
+    vendedor = db.relationship("Funcionario")
+
+    def to_dict(self): 
+        return {
+            "id": self.id, 
+            "numero_contrato": self.numero_contrato, 
+            "cliente_id": self.cliente_id, 
+            "lote_id": self.lote_id, 
+            "fecha_contrato": self.fecha_contrato.isoformat() if self.fecha_contrato else None, 
+            "valor_total": float(self.valor_total), 
+            "cuota_inicial": float(self.cuota_inicial), 
+            "cantidad_cuotas": self.cantidad_cuotas, 
+            "valor_cuota": float(self.valor_cuota), 
+            "tipo_contrato": self.tipo_contrato, 
+            "estado": self.estado, 
+            "observaciones": self.observaciones,
+            "uso": self.uso,
+            "moneda": self.moneda,
+            "doc_identidad": self.doc_identidad,
+            "cliente_nombre": f"{self.cliente.nombre} {self.cliente.apellido}", 
+            "lote_info": f"{self.lote.manzana} - {self.lote.numero_lote}", 
+            "fraccionamiento": self.lote.fraccionamiento.nombre
+        }
 
 class Cuota(db.Model):
     __tablename__ = "cuotas"
@@ -220,8 +249,7 @@ class Cuota(db.Model):
     fecha_pago = db.Column(db.Date, nullable=True)
     valor_pagado = db.Column(db.Numeric(12, 2), default=0.00)
     estado = db.Column(Enum("pendiente", "pagada", "vencida", name="estado_cuota_enum"), nullable=False, default="pendiente")
-    # CAMBIO: Campo tipo para distinguir Servicios
-    tipo = db.Column(db.String(20), default='cuota') # 'cuota' o 'servicio'
+    tipo = db.Column(db.String(20), default='cuota')
     observaciones = db.Column(db.Text, nullable=True)
     pagos = db.relationship("Pago", backref="cuota", lazy=True, cascade="all, delete-orphan")
     def to_dict(self): 
@@ -255,8 +283,6 @@ class Pago(db.Model):
     cuenta_bancaria_id = db.Column(db.Integer, db.ForeignKey('cuentas_bancarias.id'), nullable=True)
     cuenta_bancaria = db.relationship('CuentaBancaria')
     def to_dict(self): return {"id": self.id, "contrato_id": self.contrato_id, "cuota_id": self.cuota_id, "fecha_pago": self.fecha_pago.isoformat() if self.fecha_pago else None, "monto": float(self.monto), "forma_pago_id": self.forma_pago_id, "forma_pago": self.forma_pago_rel.nombre if self.forma_pago_rel else "N/A", "referencia": self.referencia, "observaciones": self.observaciones, "cuenta_bancaria_id": self.cuenta_bancaria_id, "usuario_id": self.usuario_id}
-
-# --- TESORERÍA Y GASTOS ---
 
 class Caja(db.Model):
     __tablename__ = "cajas"
