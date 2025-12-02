@@ -19,9 +19,14 @@ Gestión de Inventario / Nuevo Contrato
                             <label class="fw-bold">Nro. de Contrato:</label>
                             <input type="text" name="numero_contrato" class="form-control form-control-sm" required>
                         </div>
-                        <div class="col-md-8">
+                        
+                        <div class="col-md-8 position-relative">
                             <label class="fw-bold">Cliente:</label>
-                            <select id="selectCliente" name="cliente_id" class="form-select form-select-sm" style="width:100%" required></select>
+                            <input type="text" class="form-control form-control-sm" id="cliente_buscador" placeholder="Escribe el nombre o documento..." autocomplete="off">
+                            <input type="hidden" name="cliente_id" id="cliente_id" required>
+                            
+                            <div id="lista_resultados_clientes" class="list-group position-absolute w-100" style="z-index: 1050; display: none; max-height: 200px; overflow-y: auto; box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
+                                </div>
                         </div>
                     </div>
 
@@ -179,7 +184,5 @@ Gestión de Inventario / Nuevo Contrato
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="{{ url_for('static', filename='js/inventario_contratos.js') }}"></script>
 {% endblock %}

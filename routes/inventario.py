@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from extensions import db
 from models import Fraccionamiento, Lote, Contrato, Cuota, Cliente, ListaPrecioLote, Funcionario
 from datetime import datetime, timedelta, date
-from utils import role_required, admin_required, get_param, clean, registrar_auditoria # <--- IMPORTANTE
+from utils import role_required, admin_required, get_param, clean, registrar_auditoria
 from sqlalchemy import or_, desc
 from dateutil.relativedelta import relativedelta
 from fpdf import FPDF
@@ -213,30 +213,94 @@ def api_admin_lotes_detalle(id):
 @bp.route("/api/admin/contratos", methods=["GET", "POST"])
 @login_required
 def api_contratos():
-    if request.method == "POST":
-        d = request.get_json(force=True)
-        
-        if Contrato.query.filter_by(numero_contrato=d["numero_contrato"]).first(): 
-            return jsonify({"error": "El número de contrato ya existe"}), 400
-        
-        lote = Lote.query.get(d["lote_id"])
-        if not lote: return jsonify({"error": "Lote no encontrado"}), 404
-        if lote.estado != 'disponible' and lote.estado != 'reservado':
-            return jsonify({"error": f"El lote está {lote.estado}"}), 400
-
+    # --- GET: LISTADO DE CONTRATOS ---
+    if request.method == "GET":
         try:
-            # --- 1. CREAR CABECERA DE CONTRATO ---
+            query = Contrato.query.join(Cliente).join(Lote).join(Fraccionamiento)
+            q = request.args.get('q', '')
+            if q:
+                search = f"%{q}%"
+                query = query.filter(or_(
+                    Cliente.nombre.ilike(search), Cliente.apellido.ilike(search),
+                    Cliente.documento.ilike(search), Contrato.numero_contrato.ilike(search),
+                    Lote.numero_lote.ilike(search)
+                ))
+            
+            estado = request.args.get('estado')
+            if estado and estado != 'todos':
+                query = query.filter(Contrato.estado == estado)
+
+            contratos = query.order_by(Contrato.fecha_contrato.desc()).all()
+            return jsonify([c.to_dict() for c in contratos])
+        except Exception as e:
+            print(f"Error listando contratos: {str(e)}")
+            return jsonify({"error": "Error al cargar la lista"}), 500
+
+    # --- POST: CREAR NUEVO CONTRATO ---
+    if request.method == "POST":
+        try:
+            # 1. Obtener datos con seguridad
+            d = request.get_json(force=True)
+            print("Datos recibidos:", d) # Esto aparecerá en tu consola para depurar
+
+            # 2. Validaciones básicas
+            if not d.get("cliente_id"):
+                return jsonify({"error": "El Cliente es obligatorio"}), 400
+            if not d.get("lote_id"):
+                return jsonify({"error": "El Lote es obligatorio"}), 400
+            if not d.get("numero_contrato"):
+                return jsonify({"error": "El Nro de Contrato es obligatorio"}), 400
+
+            # 3. Validar duplicados
+            if Contrato.query.filter_by(numero_contrato=d["numero_contrato"]).first(): 
+                return jsonify({"error": "El número de contrato ya existe"}), 400
+            
+            # 4. Validar estado del lote
+            lote = Lote.query.get(d["lote_id"])
+            if not lote: return jsonify({"error": "Lote no encontrado"}), 404
+            
+            # Permitimos vender si está disponible o reservado
+            if lote.estado not in ['disponible', 'reservado']:
+                return jsonify({"error": f"El lote no se puede vender, está: {lote.estado}"}), 400
+
+            # 5. Convertir Fechas (Manejo seguro)
+            try:
+                fecha_con = datetime.strptime(d["fecha_contrato"], "%Y-%m-%d").date()
+            except ValueError:
+                return jsonify({"error": "Formato de fecha de contrato inválido"}), 400
+
+            fecha_venc_entrega = None
+            if d.get("fecha_vencimiento_entrega"):
+                try:
+                    fecha_venc_entrega = datetime.strptime(d["fecha_vencimiento_entrega"], "%Y-%m-%d").date()
+                except:
+                    pass # Si falla, se deja null
+
+            # 6. Convertir Números (Manejo seguro)
+            # El JS ya debería mandar números limpios, pero aseguramos en el backend
+            try:
+                val_total = float(d.get("valor_total", 0))
+                val_cuota = float(d.get("valor_cuota", 0))
+                val_inicial = float(d.get("cuota_inicial", 0))
+                cant_cuotas = int(d.get("cantidad_cuotas", 1))
+                cliente_id_int = int(d["cliente_id"])
+                vendedor_id_int = int(d["vendedor_id"]) if d.get("vendedor_id") else None
+            except ValueError as ve:
+                print("Error de conversión numérica:", ve)
+                return jsonify({"error": "Error en los montos o IDs numéricos"}), 400
+
+            # 7. Crear el Objeto Contrato
             c = Contrato(
                 numero_contrato=d["numero_contrato"],
-                cliente_id=d["cliente_id"],
-                lote_id=d["lote_id"],
-                vendedor_id=int(d.get("vendedor_id")) if d.get("vendedor_id") else None,
-                fecha_contrato=datetime.strptime(d["fecha_contrato"], "%Y-%m-%d").date(),
-                valor_total=float(d["valor_total"]),
-                cuota_inicial=float(d.get("cuota_inicial", 0)),
-                fecha_vencimiento_entrega=datetime.strptime(d["fecha_vencimiento_entrega"], "%Y-%m-%d").date() if d.get("fecha_vencimiento_entrega") else None,
-                cantidad_cuotas=int(d["cantidad_cuotas"]),
-                valor_cuota=float(d["valor_cuota"]),
+                cliente_id=cliente_id_int,
+                lote_id=lote.id,
+                vendedor_id=vendedor_id_int,
+                fecha_contrato=fecha_con,
+                valor_total=val_total,
+                cuota_inicial=val_inicial,
+                fecha_vencimiento_entrega=fecha_venc_entrega,
+                cantidad_cuotas=cant_cuotas,
+                valor_cuota=val_cuota,
                 tipo_contrato=d.get("tipo_contrato", "venta"),
                 uso=d.get("uso"),
                 moneda=d.get("moneda"),
@@ -250,36 +314,46 @@ def api_contratos():
                 estado='activo'
             )
             db.session.add(c)
-            db.session.flush() # Para obtener ID
+            db.session.flush() # Genera el ID del contrato sin confirmar todavía
 
-            # --- 2. GENERAR CUOTAS ---
-            fecha_base = c.fecha_contrato
+            # 8. Generar Cuotas
+            # Si vienen generadas desde el JS (tabla)
             if 'cuotas_generadas' in d and d['cuotas_generadas']:
                 for item in d['cuotas_generadas']:
+                     # Limpieza extra del monto por si acaso viene con puntos
+                     monto_limpio = str(item['monto']).replace('.', '').replace(',', '.')
+                     
+                     # Conversión de fecha DD/MM/YYYY a YYYY-MM-DD
+                     try:
+                         fecha_venc = datetime.strptime(item['vencimiento'], "%d/%m/%Y").date()
+                     except:
+                         # Fallback de emergencia
+                         fecha_venc = fecha_con + timedelta(days=30 * int(item['numero']))
+
                      cuota = Cuota(
                         contrato_id=c.id,
                         numero_cuota=int(item['numero']),
-                        fecha_vencimiento=datetime.strptime(item['vencimiento'], "%d/%m/%Y").date(),
-                        valor_cuota=float(item['monto'].replace('.','')),
+                        fecha_vencimiento=fecha_venc,
+                        valor_cuota=float(monto_limpio),
                         estado='pendiente',
                         tipo='cuota'
                     )
                      db.session.add(cuota)
             else:
-                # Lógica de emergencia
-                for i in range(1, c.cantidad_cuotas + 1):
-                    vencimiento = fecha_base + relativedelta(months=i-1)
+                # Si no hay tabla, generarlas matemáticamente (Respaldo)
+                for i in range(1, cant_cuotas + 1):
+                    vencimiento = fecha_con + relativedelta(months=i-1)
                     cuota = Cuota(
                         contrato_id=c.id,
                         numero_cuota=i,
                         fecha_vencimiento=vencimiento,
-                        valor_cuota=c.valor_cuota,
+                        valor_cuota=val_cuota,
                         estado='pendiente',
                         tipo='cuota'
                     )
                     db.session.add(cuota)
 
-            # --- 3. ACTUALIZAR LOTE ---
+            # 9. Actualizar estado del lote
             lote.estado = "vendido" if c.tipo_contrato == "venta" else "reservado"
             
             db.session.commit()
@@ -288,25 +362,9 @@ def api_contratos():
 
         except Exception as e:
             db.session.rollback()
-            return jsonify({"error": str(e)}), 500
-
-    # GET LISTADO
-    query = Contrato.query.join(Cliente).join(Lote).join(Fraccionamiento)
-    q = request.args.get('q', '')
-    if q:
-        search = f"%{q}%"
-        query = query.filter(or_(
-            Cliente.nombre.ilike(search), Cliente.apellido.ilike(search),
-            Cliente.documento.ilike(search), Contrato.numero_contrato.ilike(search),
-            Lote.numero_lote.ilike(search)
-        ))
-    
-    estado = request.args.get('estado')
-    if estado and estado != 'todos':
-        query = query.filter(Contrato.estado == estado)
-
-    contratos = query.order_by(Contrato.fecha_contrato.desc()).all()
-    return jsonify([c.to_dict() for c in contratos])
+            import traceback
+            traceback.print_exc() # Esto imprimirá el error real en tu consola negra (servidor)
+            return jsonify({"error": f"Error interno: {str(e)}"}), 500
 
 @bp.route("/api/admin/contratos/<int:id>", methods=["GET", "PATCH"])
 @login_required
@@ -490,3 +548,31 @@ def api_eliminar_precio_lote(id):
     db.session.commit()
     registrar_auditoria("ELIMINAR", "ListaPrecioLote", f"Plan de pago eliminado ID {id}")
     return jsonify({"ok": True})
+
+# --- NUEVA API PARA BÚSQUEDA SIMPLE DE CLIENTES (SIN SELECT2) ---
+@bp.route("/api/inventario/clientes/buscar_simple")
+@login_required
+def buscar_clientes_simple():
+    search = request.args.get('q', '')
+    if not search or len(search) < 2:
+        return jsonify([])
+
+    resultados = Cliente.query.filter(
+        Cliente.activo == True,
+        or_(
+            Cliente.nombre.ilike(f'%{search}%'),
+            Cliente.apellido.ilike(f'%{search}%'),
+            Cliente.documento.ilike(f'%{search}%')
+        )
+    ).limit(10).all()
+
+    data = []
+    for c in resultados:
+        nombre_completo = f"{c.nombre} {c.apellido}".strip()
+        doc = c.documento or "S/D"
+        data.append({
+            'id': c.id,
+            'texto': f"{nombre_completo} - {doc}"
+        })
+    
+    return jsonify(data)

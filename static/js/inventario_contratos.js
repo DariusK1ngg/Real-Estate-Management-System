@@ -15,24 +15,67 @@ function initCargaContrato() {
     // Cargar Vendedores
     fetch('/api/admin/vendedores').then(r=>r.json()).then(data => {
         const sel = document.getElementById('selectVendedor');
-        sel.innerHTML = '<option value="">-- Sin Vendedor --</option>';
-        data.forEach(v => {
-            const opt = document.createElement('option');
-            opt.value = v.id; opt.text = v.nombre_completo;
-            sel.appendChild(opt);
-        });
+        if(sel) {
+            sel.innerHTML = '<option value="">-- Sin Vendedor --</option>';
+            data.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.id; opt.text = v.nombre_completo;
+                sel.appendChild(opt);
+            });
+        }
     });
 
-    // Select2 Clientes
-    $('#selectCliente').select2({
-        ajax: {
-            url: '/api/admin/clientes/buscar',
-            dataType: 'json',
-            delay: 250,
-            processResults: data => ({ results: data.map(c => ({ id: c.id, text: `${c.nombre} ${c.apellido} - ${c.documento}` })) })
-        },
-        placeholder: "Buscar cliente...", width: '100%'
-    });
+    // --- NUEVO: BÚSQUEDA DE CLIENTES SIMPLE (SIN SELECT2) ---
+    const inputBuscador = document.getElementById('cliente_buscador');
+    const inputHidden = document.getElementById('cliente_id');
+    const listaResultados = document.getElementById('lista_resultados_clientes');
+
+    if(inputBuscador) {
+        inputBuscador.addEventListener('input', function() {
+            const query = this.value;
+            
+            if (query.length < 2) {
+                listaResultados.style.display = 'none';
+                listaResultados.innerHTML = '';
+                inputHidden.value = '';
+                return;
+            }
+
+            fetch(`/api/inventario/clientes/buscar_simple?q=${query}`)
+                .then(r => r.json())
+                .then(data => {
+                    listaResultados.innerHTML = '';
+                    if (data.length > 0) {
+                        listaResultados.style.display = 'block';
+                        data.forEach(c => {
+                            const item = document.createElement('a');
+                            item.className = 'list-group-item list-group-item-action';
+                            item.style.cursor = 'pointer';
+                            item.textContent = c.texto;
+                            
+                            item.addEventListener('click', function() {
+                                inputBuscador.value = c.texto;
+                                inputHidden.value = c.id;
+                                listaResultados.style.display = 'none';
+                            });
+                            
+                            listaResultados.appendChild(item);
+                        });
+                    } else {
+                        listaResultados.style.display = 'none';
+                    }
+                })
+                .catch(err => console.error("Error buscando cliente:", err));
+        });
+
+        // Ocultar lista al hacer click fuera
+        document.addEventListener('click', function(e) {
+            if (e.target !== inputBuscador && e.target !== listaResultados) {
+                listaResultados.style.display = 'none';
+            }
+        });
+    }
+    // -----------------------------------------------------
 
     // 1. Cargar Fraccionamientos (Inmuebles)
     fetch('/api/admin/fraccionamientos').then(r=>r.json()).then(data => {
@@ -69,8 +112,6 @@ function initCargaContrato() {
                     selLote.appendChild(opt);
                 });
                 selLote.disabled = false;
-                // Re-inicializar select2 para el lote si se quiere, o dejarlo nativo
-                // $('#selectLote').select2(); 
             }
         });
     });
@@ -108,6 +149,11 @@ function initCargaContrato() {
     document.getElementById('formContrato').addEventListener('submit', function(e) {
         e.preventDefault();
         
+        // Validación manual del cliente
+        if (!document.getElementById('cliente_id').value) {
+            return Swal.fire('Error', 'Debe buscar y seleccionar un cliente de la lista.', 'warning');
+        }
+
         if(cuotasGeneradas.length === 0) {
             return Swal.fire('Alto', 'Debe generar las cuotas antes de guardar.', 'warning');
         }

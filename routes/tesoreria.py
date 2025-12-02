@@ -3,26 +3,38 @@ from flask_login import login_required, current_user
 from extensions import db
 from models import EntidadFinanciera, CuentaBancaria, DepositoBancario, Caja, MovimientoCaja, Cotizacion
 from datetime import datetime
+from sqlalchemy import desc
 from utils import role_required, registrar_auditoria
 
 bp = Blueprint('tesoreria', __name__)
 
+# ==========================================
+# VISTAS HTML
+# ==========================================
+
 @bp.route("/admin/tesoreria/movimientos")
 @login_required
-@role_required('Cajero')
-def tesoreria_movimientos(): return render_template("tesoreria/movimientos.html")
+@role_required('Cajero', 'Admin')
+def tesoreria_movimientos(): 
+    return render_template("tesoreria/movimientos.html")
 
 @bp.route("/admin/tesoreria/reportes")
 @login_required
-@role_required('Cajero')
-def tesoreria_reportes(): return render_template("tesoreria/reportes.html")
+@role_required('Cajero', 'Admin')
+def tesoreria_reportes(): 
+    return render_template("tesoreria/reportes.html")
 
 @bp.route("/admin/tesoreria/definiciones")
 @login_required
 @role_required('Admin', 'Cajero')
-def tesoreria_definiciones(): return render_template("tesoreria/definiciones.html")
+def tesoreria_definiciones(): 
+    return render_template("tesoreria/definiciones.html")
 
-# --- NUEVA RUTA AGREGADA PARA SOLUCIONAR EL ERROR DE CONEXIÓN EN COBROS ---
+# ==========================================
+# APIS DE ESTADO Y APERTURA DE CAJA
+# ==========================================
+
+# --- RUTA SOLICITADA PARA CORREGIR EL ERROR DE CONEXIÓN EN COBROS ---
 @bp.route("/api/admin/caja/estado", methods=["GET"])
 @login_required
 def api_caja_estado():
@@ -33,18 +45,96 @@ def api_caja_estado():
         caja = Caja.query.get(caja_id)
         if caja and caja.abierta:
             return jsonify({
+                "abierta": True, # Compatible con ambos frontends
                 "caja_abierta": True,
                 "caja_descripcion": caja.descripcion,
-                "saldo_actual": float(caja.saldo_actual)
+                "saldo_actual": float(caja.saldo_actual),
+                "mensaje": f"Caja Abierta: {caja.descripcion}"
             })
     
-    # Si no hay sesión, verificamos si hay alguna caja abierta asignada (opcional, por seguridad retornamos cerrado)
+    # Si no hay sesión
     return jsonify({
+        "abierta": False,
         "caja_abierta": False,
         "caja_descripcion": "",
-        "saldo_actual": 0.0
+        "saldo_actual": 0.0,
+        "mensaje": "No hay caja abierta"
     })
-# --------------------------------------------------------------------------
+
+@bp.route("/api/admin/caja/abrir", methods=["POST"])
+@login_required
+def api_abrir_caja():
+    data = request.json
+    caja_id_seleccionada = data.get("caja_id", 1)
+    monto_apertura = float(data.get("monto_apertura", 0))
+    
+    caja = Caja.query.get(caja_id_seleccionada)
+    if not caja:
+        # Crear caja por defecto si no existe (Caja 1)
+        caja = Caja(id=caja_id_seleccionada, descripcion="Caja General", sucursal="Central", saldo_actual=0, abierta=False)
+        db.session.add(caja)
+        db.session.commit()
+
+    if caja.abierta:
+        return jsonify({"error": "Esta caja ya está abierta"}), 400
+        
+    caja.abierta = True
+    caja.saldo_actual = monto_apertura
+    caja.fecha_apertura = datetime.now() # Registramos fecha apertura
+    
+    # Registrar Movimiento Inicial
+    apertura = MovimientoCaja(
+        caja_id=caja.id,
+        tipo_movimiento="ingreso",
+        monto=monto_apertura,
+        concepto="Apertura de Caja",
+        fecha_hora=datetime.now(),
+        usuario_id=current_user.id
+    )
+    db.session.add(apertura)
+    db.session.commit()
+    
+    session["caja_id"] = caja.id
+    registrar_auditoria("APERTURA", "Caja", f"Apertura Caja {caja.descripcion} con {monto_apertura:,.0f}")
+    return jsonify({"ok": True, "message": f"Caja '{caja.descripcion}' abierta con Gs. {monto_apertura:,.0f}"})
+
+@bp.route("/api/admin/caja/cerrar", methods=["POST"])
+@login_required
+def api_cerrar_caja():
+    caja_id = session.get("caja_id")
+    if not caja_id:
+        return jsonify({"error": "No hay ninguna caja abierta en esta sesión"}), 400
+        
+    caja = Caja.query.get(caja_id)
+    if not caja or not caja.abierta:
+        session.pop("caja_id", None)
+        return jsonify({"error": "La caja no existe o ya está cerrada"}), 400
+    
+    saldo_cierre = caja.saldo_actual
+    
+    # Registrar Movimiento de Cierre (Egreso para dejar en 0 o ajuste)
+    cierre = MovimientoCaja(
+        caja_id=caja.id,
+        tipo_movimiento="egreso",
+        monto=saldo_cierre,
+        concepto="Cierre de Caja (Retiro de Fondos)",
+        fecha_hora=datetime.now(),
+        usuario_id=current_user.id
+    )
+    db.session.add(cierre)
+    
+    caja.abierta = False
+    caja.saldo_actual = 0
+    caja.ultimo_arqueo = datetime.now()
+    db.session.commit()
+    
+    session.pop("caja_id", None)
+    registrar_auditoria("CIERRE", "Caja", f"Cierre Caja {caja.descripcion} con saldo {saldo_cierre:,.0f}")
+    return jsonify({"ok": True, "message": f"Caja '{caja.descripcion}' cerrada con saldo Gs. {saldo_cierre:,.0f}"})
+
+# ==========================================
+# APIS DE GESTIÓN BANCARIA (TU LOGICA)
+# ==========================================
 
 @bp.route("/api/admin/entidades-financieras", methods=["GET", "POST"])
 @login_required
@@ -242,69 +332,82 @@ def api_transferencias_bancarias():
         db.session.rollback()
         return jsonify({"error": "Error interno del servidor", "details": str(e)}), 500
 
-@bp.route("/api/admin/caja/abrir", methods=["POST"])
-@login_required
-def api_abrir_caja():
-    data = request.json
-    caja_id_seleccionada = data.get("caja_id", 1)
-    monto_apertura = float(data.get("monto_apertura", 0))
-    
-    caja = Caja.query.get(caja_id_seleccionada)
-    if not caja:
-        caja = Caja(id=caja_id_seleccionada, descripcion="Caja General", sucursal="Central", saldo_actual=0, abierta=False)
-        db.session.add(caja)
-        db.session.commit()
+# ==========================================
+# APIS PARA ARQUEO DE CAJA (ESTO FALTABA)
+# ==========================================
 
-    if caja.abierta:
-        return jsonify({"error": "Esta caja ya está abierta"}), 400
-        
-    caja.abierta = True
-    caja.saldo_actual = monto_apertura
-    
-    apertura = MovimientoCaja(
-        caja_id=caja.id,
-        tipo_movimiento="ingreso",
-        monto=monto_apertura,
-        concepto="Apertura de Caja",
-        fecha_hora=datetime.utcnow(),
-        usuario_id=current_user.id
-    )
-    db.session.add(apertura)
-    db.session.commit()
-    
-    session["caja_id"] = caja.id
-    registrar_auditoria("APERTURA", "Caja", f"Apertura Caja {caja.descripcion} con {monto_apertura:,.0f}")
-    return jsonify({"ok": True, "message": f"Caja '{caja.descripcion}' abierta con Gs. {monto_apertura:,.0f}"})
-
-@bp.route("/api/admin/caja/cerrar", methods=["POST"])
+@bp.route("/api/admin/caja/movimientos")
 @login_required
-def api_cerrar_caja():
+def api_get_movimientos():
     caja_id = session.get("caja_id")
-    if not caja_id:
-        return jsonify({"error": "No hay ninguna caja abierta en esta sesión"}), 400
+    filtro_fecha = request.args.get('fecha')
+    
+    query = MovimientoCaja.query
+    
+    if caja_id and not filtro_fecha:
+        query = query.filter_by(caja_id=caja_id)
+    elif filtro_fecha:
+        try:
+            fecha_dt = datetime.strptime(filtro_fecha, '%Y-%m-%d')
+            query = query.filter(db.func.date(MovimientoCaja.fecha_hora) == fecha_dt.date())
+        except: pass
+
+    # Ordenar por el más reciente arriba
+    movimientos = query.order_by(desc(MovimientoCaja.fecha_hora)).all()
+    
+    data = []
+    for m in movimientos:
+        # Formato de fecha con hora exacta
+        fecha_fmt = m.fecha_hora.strftime("%d/%m/%Y %H:%M:%S")
         
+        data.append({
+            "id": m.id,
+            "fecha": fecha_fmt,
+            "concepto": m.concepto,
+            "tipo": m.tipo_movimiento.upper(),
+            "monto": float(m.monto),
+            "usuario": m.usuario.nombre if m.usuario else "Sistema",
+            "categoria": m.categoria or "General"
+        })
+        
+    return jsonify(data)
+
+@bp.route("/api/admin/caja/ingreso-egreso-manual", methods=["POST"])
+@login_required
+def api_movimiento_manual():
+    caja_id = session.get("caja_id")
+    if not caja_id: return jsonify({"error": "Debe abrir caja primero"}), 400
+    
     caja = Caja.query.get(caja_id)
-    if not caja or not caja.abierta:
-        session.pop("caja_id", None)
-        return jsonify({"error": "La caja no existe o ya está cerrada"}), 400
+    if not caja.abierta: return jsonify({"error": "La caja está cerrada"}), 400
     
-    saldo_cierre = caja.saldo_actual
-    
-    cierre = MovimientoCaja(
-        caja_id=caja.id,
-        tipo_movimiento="egreso",
-        monto=saldo_cierre,
-        concepto="Cierre de Caja",
-        fecha_hora=datetime.utcnow(),
-        usuario_id=current_user.id
-    )
-    db.session.add(cierre)
-    
-    caja.abierta = False
-    caja.saldo_actual = 0
-    caja.ultimo_arqueo = datetime.utcnow()
-    db.session.commit()
-    
-    session.pop("caja_id", None)
-    registrar_auditoria("CIERRE", "Caja", f"Cierre Caja {caja.descripcion} con saldo {saldo_cierre:,.0f}")
-    return jsonify({"ok": True, "message": f"Caja '{caja.descripcion}' cerrada con saldo Gs. {saldo_cierre:,.0f}"})
+    data = request.json
+    try:
+        tipo = data.get("tipo") 
+        monto = float(data.get("monto"))
+        concepto = data.get("concepto")
+        
+        if monto <= 0: return jsonify({"error": "Monto inválido"}), 400
+        
+        mov = MovimientoCaja(
+            caja_id=caja.id,
+            tipo_movimiento=tipo,
+            monto=monto,
+            concepto=concepto,
+            fecha_hora=datetime.now(),
+            usuario_id=current_user.id,
+            categoria='manual'
+        )
+        db.session.add(mov)
+        
+        if tipo == 'ingreso':
+            caja.saldo_actual = float(caja.saldo_actual) + monto
+        else:
+            caja.saldo_actual = float(caja.saldo_actual) - monto
+            
+        db.session.commit()
+        registrar_auditoria("MOV_MANUAL", "Caja", f"{tipo.upper()} de {monto} en Caja {caja.id}")
+        return jsonify({"ok": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500

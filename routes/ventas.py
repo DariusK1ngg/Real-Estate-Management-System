@@ -290,3 +290,30 @@ def api_buscar_clientes():
 def api_contratos_activos_cliente(cid):
     contratos = Contrato.query.filter_by(cliente_id=cid, estado='activo').all()
     return jsonify([{"id": c.id, "numero": c.numero_contrato, "lote": c.lote.numero_lote, "manzana": c.lote.manzana} for c in contratos])
+
+# --- RUTA AGREGADA PARA BUSCADOR NATIVO ---
+@bp.route("/api/ventas/clientes/buscar_simple")
+@login_required
+def buscar_clientes_simple_ventas():
+    search = request.args.get('q', '')
+    if not search or len(search) < 2:
+        return jsonify([])
+
+    resultados = Cliente.query.filter(
+        Cliente.activo == True,
+        or_(
+            Cliente.nombre.ilike(f'%{search}%'),
+            Cliente.apellido.ilike(f'%{search}%'),
+            Cliente.documento.ilike(f'%{search}%')
+        )
+    ).limit(10).all()
+
+    data = []
+    for c in resultados:
+        nombre_completo = f"{c.nombre} {c.apellido}".strip()
+        data.append({
+            'id': c.id,
+            'texto': f"{nombre_completo} - {c.documento}"
+        })
+    
+    return jsonify(data)

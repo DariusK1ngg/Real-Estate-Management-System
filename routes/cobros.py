@@ -15,7 +15,16 @@ bp = Blueprint('cobros', __name__)
 @login_required
 @role_required('Cajero')
 def cobros_movimientos(): 
-    return render_template("cobros/movimientos.html")
+    # --- LÓGICA AGREGADA: VERIFICAR ESTADO DE CAJA ---
+    caja_abierta = False
+    caja_id = session.get("caja_id")
+    if caja_id:
+        caja = Caja.query.get(caja_id)
+        if caja and caja.abierta:
+            caja_abierta = True
+    # -------------------------------------------------
+    
+    return render_template("cobros/movimientos.html", caja_abierta=caja_abierta)
 
 @bp.route("/admin/cobros/reportes")
 @login_required
@@ -29,11 +38,9 @@ def cobros_reportes():
 def cobros_definiciones(): 
     return render_template("cobros/definiciones.html")
 
-# --- NUEVA FUNCIÓN AGREGADA PARA CORREGIR EL ERROR DE CONEXIÓN ---
 @bp.route("/api/cobros/historial")
 @login_required
 def api_cobros_historial():
-    # Filtros de fecha opcionales
     fecha_inicio = request.args.get('fecha_inicio')
     fecha_fin = request.args.get('fecha_fin')
     
@@ -51,12 +58,10 @@ def api_cobros_historial():
             query = query.filter(Pago.fecha_pago <= f_fin)
         except: pass
         
-    # Ordenar por fecha descendente
     pagos = query.order_by(Pago.fecha_pago.desc()).all()
     
     data = []
     for p in pagos:
-        # Construir descripción del cliente y concepto de forma segura
         cliente_nombre = "N/A"
         concepto = "Pago General"
         
@@ -69,12 +74,12 @@ def api_cobros_historial():
         data.append({
             'id': p.id,
             'fecha': p.fecha_pago.strftime('%d/%m/%Y'),
-            'recibo': p.id,  # Usamos ID como recibo si no hay nro específico
+            'recibo': p.id,
             'cliente': cliente_nombre,
             'concepto': concepto,
             'monto': float(p.monto),
             'forma_pago': p.forma_pago.nombre if p.forma_pago else "N/A",
-            'estado': 'Confirmado', # Los pagos registrados ya están confirmados
+            'estado': 'Confirmado',
             'acciones': f"""
                 <a href="/admin/cobros/recibo/{p.id}" target="_blank" class="btn btn-sm btn-info" title="Imprimir Recibo">
                     <i class="fas fa-print"></i>
@@ -82,7 +87,6 @@ def api_cobros_historial():
             """
         })
 
-    # IMPORTANTE: Envolver en "data" para que DataTables funcione
     return jsonify({"data": data})
 
 @bp.route("/api/admin/clientes/<int:cliente_id>/cuotas")
@@ -120,7 +124,11 @@ def api_registrar_pago():
     
     try:
         forma_id = int(data.get("forma_pago_id"))
-        monto_recibido = Decimal(str(data["monto"]))
+        
+        # Limpieza de puntos de miles
+        monto_str = str(data["monto"]).replace('.', '').replace(',', '.')
+        monto_recibido = Decimal(monto_str)
+        
         fecha_pago_dt = datetime.strptime(data["fecha_pago"], "%Y-%m-%d")
         fecha_pago_date = fecha_pago_dt.date()
     except (ValueError, TypeError):
@@ -146,9 +154,12 @@ def api_registrar_pago():
             "dias_atraso": dias_atraso
         }), 400
 
+    # Convertimos cadena vacía "" a None para que SQL no falle
     cuenta_bancaria_id = data.get("cuenta_bancaria_id")
-    if cuenta_bancaria_id:
+    if cuenta_bancaria_id and str(cuenta_bancaria_id).strip():
         cuenta_bancaria_id = int(cuenta_bancaria_id)
+    else:
+        cuenta_bancaria_id = None
 
     caja = None
     if forma_id == 1: 
@@ -161,58 +172,65 @@ def api_registrar_pago():
     if interes_calculado > 0:
         obs_sistema += f" [Incluye mora: {interes_calculado:,.0f} Gs por {dias_atraso} días de atraso]"
 
-    pago = Pago(
-        contrato_id=cuota.contrato_id, 
-        cuota_id=cuota.id, 
-        fecha_pago=fecha_pago_dt,
-        monto=monto_recibido, 
-        forma_pago_id=forma_id, 
-        referencia=data.get("referencia"), 
-        observaciones=obs_sistema.strip(),
-        usuario_id=current_user.id, 
-        cuenta_bancaria_id=cuenta_bancaria_id
-    )
-    db.session.add(pago)
-    
-    cuota.estado = 'pagada'
-    cuota.fecha_pago = pago.fecha_pago
-    cuota.valor_pagado = monto_recibido 
-    
-    audit_detalle = f"Pago cuota {cuota.numero_cuota} ({cuota.contrato.numero_contrato}). Total: {monto_recibido:,.0f}"
-
-    if forma_id == 1 and caja:
-        mov = MovimientoCaja(
-            caja_id=caja.id, 
-            tipo_movimiento="ingreso", 
+    try:
+        pago = Pago(
+            contrato_id=cuota.contrato_id, 
+            cuota_id=cuota.id, 
+            fecha_pago=fecha_pago_dt,
             monto=monto_recibido, 
-            concepto=f"Cobro {cuota.tipo.title()} {cuota.numero_cuota} - {cuota.contrato.cliente.nombre}", 
-            fecha_hora=datetime.now(), 
-            pago_id=pago.id, 
-            usuario_id=current_user.id
+            forma_pago_id=forma_id, 
+            referencia=data.get("referencia"), 
+            observaciones=obs_sistema.strip(),
+            usuario_id=current_user.id, 
+            cuenta_bancaria_id=cuenta_bancaria_id
         )
-        db.session.add(mov)
-        caja.saldo_actual = (caja.saldo_actual or 0) + monto_recibido
-        audit_detalle += " (Efectivo)"
+        db.session.add(pago)
         
-    elif cuenta_bancaria_id:
-        cta = CuentaBancaria.query.get(cuenta_bancaria_id)
-        if cta:
-            dep = DepositoBancario(
-                cuenta_id=cta.id, 
-                fecha_deposito=pago.fecha_pago, 
+        cuota.estado = 'pagada'
+        cuota.fecha_pago = pago.fecha_pago
+        cuota.valor_pagado = monto_recibido 
+        
+        audit_detalle = f"Pago cuota {cuota.numero_cuota} ({cuota.contrato.numero_contrato}). Total: {monto_recibido:,.0f}"
+
+        if forma_id == 1 and caja:
+            mov = MovimientoCaja(
+                caja_id=caja.id, 
+                tipo_movimiento="ingreso", 
                 monto=monto_recibido, 
-                referencia=data.get("referencia", "Cobro Auto"), 
-                concepto=f"Cobro {cuota.tipo.title()} {cuota.numero_cuota}", 
-                estado='confirmado', 
+                concepto=f"Cobro {cuota.tipo.title()} {cuota.numero_cuota} - {cuota.contrato.cliente.nombre}", 
+                fecha_hora=datetime.now(), 
+                pago_id=pago.id, 
                 usuario_id=current_user.id
             )
-            db.session.add(dep)
-            cta.saldo = (cta.saldo or 0) + monto_recibido
-            audit_detalle += f" (Banco {cta.entidad.nombre})"
+            db.session.add(mov)
+            caja.saldo_actual = (caja.saldo_actual or 0) + monto_recibido
+            audit_detalle += " (Efectivo)"
+            
+        elif cuenta_bancaria_id:
+            cta = CuentaBancaria.query.get(cuenta_bancaria_id)
+            if cta:
+                dep = DepositoBancario(
+                    cuenta_id=cta.id, 
+                    fecha_deposito=pago.fecha_pago, 
+                    monto=monto_recibido, 
+                    referencia=data.get("referencia", "Cobro Auto"), 
+                    concepto=f"Cobro {cuota.tipo.title()} {cuota.numero_cuota}", 
+                    estado='confirmado', 
+                    usuario_id=current_user.id
+                )
+                db.session.add(dep)
+                cta.saldo = (cta.saldo or 0) + monto_recibido
+                audit_detalle += f" (Banco {cta.entidad.nombre})"
 
-    db.session.commit()
-    registrar_auditoria("CREAR", "Pago", audit_detalle) 
-    return jsonify({"ok": True, "message": "Pago registrado correctamente", "pago_id": pago.id})
+        db.session.commit()
+        registrar_auditoria("CREAR", "Pago", audit_detalle) 
+        return jsonify({"ok": True, "message": "Pago registrado correctamente", "pago_id": pago.id})
+        
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Error interno BD: {str(e)}"}), 500
 
 @bp.route("/admin/cobros/recibo/<int:pago_id>")
 @login_required
