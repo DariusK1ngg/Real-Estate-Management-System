@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Admin - Fraccionamientos y Lotes</title>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+  <div class="topbar">
+    <a href="{{ url_for('auth.admin_dashboard') }}" style="color: rgb(0, 0, 0); font-weight: bold; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+        <i class="fas fa-arrow-left"></i>
+        <span>Volver al Menú</span>
+    </a>
+    <div class="filter-container">
+        <label for="admin-frac-filter">Ver Fraccionamiento:</label>
+        <select id="admin-frac-filter">
+            <option value="">-- Todos --</option>
+        </select>
+    </div>
+    <div style="margin-left:auto; display:flex; gap:12px">
+      <a href="/" style="text-decoration:none">Ver sitio</a>
+      <a href="/logout" style="text-decoration:none">Cerrar sesión</a>
+    </div>
+  </div>
+  <div id="map"></div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <button id="btn-show-fraccionamientos" class="info active">Fraccionamientos</button>
+      <button id="btn-show-lotes" class="info">Lotes</button>
+    </div>
+
+    <div id="seccion-fraccionamientos" class="seccion-activa">
+      <h3>Fraccionamientos</h3>
+      <div class="row">
+        <small>Dibuja un polígono y completa los datos para guardarlo.</small>
+        <label>Ubicación (Ciudad)</label>
+        <select id="frac-ciudad" style="width: 100%; margin-bottom: 8px;">
+          <option value="">-- Selecciona Ciudad --</option>
+        </select>
+        <label>Nombre</label>
+        <input id="frac-nombre" type="text" placeholder="Ej: Barrio Los Pinos" />
+        <label>Descripción</label>
+        <textarea id="frac-desc" rows="2" placeholder="Opcional"></textarea>
+        <div style="display:flex; gap:8px">
+          <button id="btn-frac-draw" class="info">Dibujar fraccionamiento</button>
+          <button id="btn-frac-save" class="success">Guardar</button>
+        </div>
+        <div style="display:flex; gap:8px">
+          <select id="frac-select"><option value="">— Selecciona para editar —</option></select>
+          <button id="btn-frac-del" class="danger">Eliminar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="seccion-lotes" class="seccion-oculta">
+      <h3>Lotes</h3>
+      <div class="row">
+        <label>Fraccionamiento</label>
+        <select id="lote-frac"><option value="">— Selecciona —</option></select>
+      </div>
+      <div class="row">
+        <label>Manzana</label>
+        <input id="f-manzana" type="text" placeholder="Ej: A" />
+      </div>
+      <div class="row">
+        <label>N° Lote</label>
+        <input id="f-numero" type="text" placeholder="Ej: 12" />
+      </div>
+      <div class="row">
+        <label>Precio</label>
+        <input id="f-precio" type="number" step="0.01" placeholder="Ej: 15000" />
+      </div>
+      <div class="row">
+        <label>Metros cuadrados</label>
+        <input id="f-m2" type="number" placeholder="Ej: 320" />
+      </div>
+      <div class="row">
+        <label>Estado</label>
+        <select id="f-estado">
+          <option value="disponible">disponible</option>
+          <option value="reservado">reservado</option>
+          <option value="vendido">vendido</option>
+        </select>
+      </div>
+      <div class="row" style="display:flex; gap:8px; flex-direction:row">
+        <button id="btn-draw-rect" class="info">Dibujar rectángulo</button>
+        <button id="btn-draw-poly" class="info">Dibujar polígono</button>
+        <button id="btn-edit-lote" class="info">Editar seleccionado</button>
+      </div>
+      <div class="row" style="display:flex; gap:8px; flex-direction:row">
+        <button id="btn-guardar" class="success">Guardar nuevo</button>
+        <button id="btn-actualizar" class="secondary">Actualizar seleccionado</button>
+        <button id="btn-eliminar" class="danger">Eliminar seleccionado</button>
+      </div>
+      <div class="row" style="display:flex; gap:8px; flex-direction:row">
+        <button id="btn-copiar" class="info" title="Ctrl+C">Copiar</button>
+        <button id="btn-pegar" class="info" title="Ctrl+V">Pegar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+  
+  <script src="/static/js/main.js"></script>
+  <script src="/static/js/admin.js"></script>
+</body>
+</html>

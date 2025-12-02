@@ -1,0 +1,103 @@
+#modalFactura {
+    z-index: 1060 !important;
+}
+
+/* Aseguramos que el fondo oscuro tenga un índice menor */
+.modal-backdrop {
+    z-index: 1050 !important;
+}
+
+/* --- ESTILOS DEL MODAL --- */
+/* Ancho personalizado para la factura */
+#modalFactura .modal-dialog {
+    max-width: 900px;
+    width: 95%; /* Responsive en móviles */
+}
+
+/* --- FORMULARIO DE CABECERA (GRID) --- */
+.factura-header-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+/* --- SECCIÓN DE DETALLES (FILA DE AGREGADO) --- */
+.detalle-controls-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: flex-end; /* Alinea el botón con los inputs */
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+}
+
+/* Ajuste de anchos para los controles de detalle */
+.col-item {
+    flex: 3; /* El selector de ítem ocupa más espacio */
+    min-width: 250px;
+}
+
+.col-cantidad {
+    flex: 1;
+    min-width: 100px;
+}
+
+.col-precio {
+    flex: 1;
+    min-width: 120px;
+}
+
+.col-boton {
+    flex: 0;
+}
+
+/* Campo oculto para descripción manual */
+.input-descripcion-manual {
+    display: none; /* Oculto por defecto */
+    margin-top: 8px;
+}
+
+/* --- TABLA DE DETALLES --- */
+.tabla-detalles-container {
+    max-height: 350px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    margin-bottom: 15px;
+}
+
+.tabla-detalles th {
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fa;
+    z-index: 1;
+}
+
+.tabla-detalles td {
+    vertical-align: middle;
+}
+
+/* Columna de acciones (botón eliminar) */
+.col-accion {
+    width: 50px;
+    text-align: center;
+}
+
+/* Pie de tabla (Totales) */
+.factura-footer-total {
+    background-color: #f8f9fa;
+    font-size: 1.2em;
+    border-top: 2px solid #dee2e6;
+}
+
+#factura-total {
+    font-weight: bold;
+    color: #0d6efd; /* Azul Bootstrap */
+}
+
+/* Ajustes para Select2 dentro del modal */
+.select2-container {
+    width: 100% !important;
+}

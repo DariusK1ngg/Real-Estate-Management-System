@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0"><i class="fas fa-file-invoice-dollar"></i> Reporte de Liquidación de Propietario</h4>
+        </div>
+        <div class="card-body">
+            <form action="/admin/reportes/liquidacion-propietario/pdf" method="POST" target="_blank">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Seleccione Fraccionamiento:</label>
+                        <select name="fraccionamiento_id" class="form-select select2" required>
+                            <option value="" selected disabled>-- Elija una opción --</option>
+                            {% for f in fraccionamientos %}
+                            <option value="{{ f.id }}">
+                                {{ f.nombre }} (Inmob: {{ f.comision_inmobiliaria }}% - Prop: {{ f.comision_propietario }}%)
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">El porcentaje de comisión se toma de la configuración del Inventario.</small>
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Fecha Desde:</label>
+                        <input type="date" name="fecha_desde" class="form-control" required>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Fecha Hasta:</label>
+                        <input type="date" name="fecha_hasta" class="form-control" required>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="submit" class="btn btn-danger btn-lg">
+                        <i class="fas fa-file-pdf"></i> Generar Liquidación PDF
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Script simple para poner fecha de hoy por defecto
+    document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementsByName("fecha_hasta")[0].value = today;
+        // Poner el primer día del mes en 'desde'
+        const date = new Date();
+        const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0];
+        document.getElementsByName("fecha_desde")[0].value = firstDay;
+    });
+</script>
+{% endblock %}

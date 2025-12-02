@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Gestión del Inventario / Reportes / Listado de Contratos
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        .printable-area, .printable-area * {
+            visibility: visible;
+        }
+        .printable-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+        .no-print {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card printable-area">
+    <div class="card-header">
+        <h2 class="card-title">Reporte de Contratos</h2>
+        <button class="btn btn-info no-print" onclick="window.print()">🖨️ Imprimir Reporte</button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table no-datatable">
+                <thead>
+                    <tr>
+                        <th>N° Contrato</th>
+                        <th>Cliente</th>
+                        <th>Lote</th>
+                        <th>Fecha</th>
+                        <th>Valor Total</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contrato in contratos %}
+                    <tr>
+                        <td><strong>{{ contrato.numero_contrato }}</strong></td>
+                        <td>{{ contrato.cliente.nombre }} {{ contrato.cliente.apellido }}</td>
+                        <td>{{ contrato.lote.fraccionamiento.nombre }} - M:{{ contrato.lote.manzana }} L:{{ contrato.lote.numero_lote }}</td>
+                        <td>{{ contrato.fecha_contrato.strftime('%d/%m/%Y') }}</td>
+                        <td>${{ "{:,.0f}".format(contrato.valor_total) }}</td>
+                        <td><span class="badge estado-{{ contrato.estado }}">{{ contrato.estado }}</span></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">No hay contratos para mostrar.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

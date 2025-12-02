@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Gestión de Ventas / Cargar Servicio
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-info text-white">
+                <h4 class="card-title mb-0"><i class="fas fa-file-invoice-dollar"></i> Cargar Servicio (Generar Deuda)</h4>
+            </div>
+            <div class="card-body">
+                
+                <form id="formCargaDeuda">
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-5 position-relative">
+                            <label class="form-label fw-bold">1. Cliente</label>
+                            
+                            <input type="text" class="form-control" id="cliente_buscador" placeholder="Escribe para buscar..." autocomplete="off">
+                            
+                            <input type="hidden" id="cliente_id_hidden">
+                            
+                            <div id="lista_resultados_clientes" class="list-group position-absolute w-100" style="z-index: 1050; display: none; max-height: 200px; overflow-y: auto; box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">2. Contrato Activo</label>
+                            <select class="form-select" id="selectContrato" disabled>
+                                <option value="">-- Seleccione Cliente Primero --</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Fecha Vencimiento</label>
+                            <input type="date" id="fechaVenc" class="form-control" value="{{ now }}">
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="row mb-3 align-items-end bg-light p-3 rounded">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold text-primary">3. Seleccionar Servicio del Catálogo</label>
+                            <select id="selectServicioCatalogo" class="form-select">
+                                <option value="">-- Elegir --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-primary w-100" onclick="window.agregarItemDesdeCatalogo()">
+                                <i class="fas fa-plus-circle"></i> Agregar a la lista
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive mb-3">
+                        <table class="table table-bordered table-hover align-middle" id="tablaDetalles">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Descripción del Servicio</th>
+                                    <th width="30%">Monto a Cobrar (Gs)</th>
+                                    <th width="10%" class="text-center">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                </tbody>
+                        </table>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 text-end">
+                            <h3 class="fw-bold text-success">Total: Gs. <span id="totalVenta">0</span></h3>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{{ url_for('ventas.ventas_movimientos') }}" class="btn btn-secondary">Cancelar</a>
+                        
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-check-circle"></i> Confirmar Carga
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ventas.js') }}?v={{ range(1, 10000) | random }}"></script>
+{% endblock %}

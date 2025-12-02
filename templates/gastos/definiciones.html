@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Definiciones de Gastos{% endblock %}
+
+{% block extra_css %}
+    <!-- Cargamos CSS de ventas (para formularios) y el de gastos (para pestañas) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ventas.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/gastos.css') }}">
+{% endblock %}
+
+<!-- 
+  *** CORRECCIÓN IMPORTANTE ***
+  Cambiado de 'main_content' a 'content' para que coincida con tu base.html
+-->
+{% block content %}
+<div class="content-container">
+    <header class="main-header">
+        <h1>Gastos - Definiciones</h1>
+    </header>
+    
+    <!-- Contenedor de Pestañas -->
+    <div class="tabs-container">
+        <div class="tab-links">
+            <button class="tab-link active" data-tab="tab-proveedores">Proveedores</button>
+            <button class="tab-link" data-tab="tab-categorias">Categorías de Gasto</button>
+        </div>
+
+        <div class="tab-content-container">
+            
+            <!-- Pestaña Proveedores (Asumo que ya tenías esto) -->
+            <div id="tab-proveedores" class="tab-content active">
+                <h3>Gestión de Proveedores</h3>
+                
+                <div class="form-container-ventas">
+                    <form id="form-proveedor">
+                        <input type="hidden" id="proveedor-id" name="id">
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label for="proveedor-razon-social">Razón Social</label>
+                                <input type="text" id="proveedor-razon-social" name="razon_social" class="form-control" required>
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label for="proveedor-ruc">RUC</label>
+                                <input type="text" id="proveedor-ruc" name="ruc" class="form-control" required>
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label for="proveedor-telefono">Teléfono</label>
+                                <input type="text" id="proveedor-telefono" name="telefono" class="form-control">
+                            </div>
+                        </div>
+                         <div class="form-row">
+                            <div class="form-group col-md-10">
+                                <label for="proveedor-direccion">Dirección</label>
+                                <input type="text" id="proveedor-direccion" name="direccion" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Guardar Proveedor</button>
+                            <button type="button" class="btn btn-secondary" id="btn-cancelar-proveedor">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="table-container-ventas">
+                    <input type="text" id="search-proveedor" class="form-control mb-3" placeholder="Buscar proveedor...">
+                    <table id="tabla-proveedores">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Razón Social</th>
+                                <th>RUC</th>
+                                <th>Teléfono</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Filas de proveedores cargadas por JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pestaña Categorías de Gasto (NUEVO) -->
+            <div id="tab-categorias" class="tab-content">
+                <h3>Gestión de Categorías de Gasto</h3>
+    
+                <!-- Formulario para Nueva Categoría -->
+                <div class="form-container-ventas">
+                    <form id="form-categoria-gasto">
+                        <input type="hidden" id="categoria-id" name="id">
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label for="categoria-nombre">Nombre</label>
+                                <input type="text" id="categoria-nombre" name="nombre" class="form-control" required>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="categoria-descripcion">Descripción</label>
+                                <input type="text" id="categoria-descripcion" name="descripcion" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Guardar Categoría</button>
+                            <button type="button" class="btn btn-secondary" id="btn-cancelar-categoria">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Tabla de Categorías Existentes -->
+                <div class="table-container-ventas">
+                    <table id="tabla-categorias-gasto">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Las filas se cargarán con JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<!-- 
+  *** CORRECCIÓN IMPORTANTE ***
+  Cambiado de 'scripts' a 'extra_js' para que coincida con tu base.html
+-->
+{% block extra_js %}
+    <script src="{{ url_for('static', filename='js/gastos.js') }}"></script>
+{% endblock %}

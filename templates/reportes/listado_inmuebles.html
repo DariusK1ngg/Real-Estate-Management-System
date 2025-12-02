@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Gestión del Inventario / Reportes / Listado de Inmuebles
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="card printable-area">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="card-title">Inventario General de Inmuebles</h2>
+        <button class="btn btn-info no-print" onclick="window.print()">🖨️ Imprimir</button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-reporte no-datatable">
+                <thead>
+                    <tr>
+                        <th>Fraccionamiento</th>
+                        <th>Ubicación (Mza - Lote)</th>
+                        <th>Superficie</th>
+                        <th>Precio Contado (Gs.)</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lote in lotes %}
+                    <tr>
+                        <td>{{ lote.fraccionamiento.nombre }}</td>
+                        <td><strong>M:</strong> {{ lote.manzana }} - <strong>L:</strong> {{ lote.numero_lote }}</td>
+                        <td>{{ lote.metros_cuadrados }} m²</td>
+                        <td>{{ "{:,.0f}".format(lote.precio).replace(',', '.') }}</td>
+                        <td>
+                            <span class="badge estado-{{ lote.estado }}">{{ lote.estado.upper() }}</span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="text-center">No hay inmuebles registrados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

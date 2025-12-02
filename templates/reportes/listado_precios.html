@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Gestión del Inventario / Reportes / Listas de Precios
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="card printable-area">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="card-title">Listas de Precios y Financiación</h2>
+        <button class="btn btn-info no-print" onclick="window.print()">🖨️ Imprimir</button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-reporte no-datatable">
+                <thead>
+                    <tr>
+                        <th>Fraccionamiento</th>
+                        <th>Lote</th>
+                        <th>Plan / Condición</th>
+                        <th>Cuotas</th>
+                        <th>Valor Cuota (Gs.)</th>
+                        <th>Total Financiado (Gs.)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in precios %}
+                    <tr>
+                        <td>{{ p.lote.fraccionamiento.nombre }}</td>
+                        <td>M: {{ p.lote.manzana }} - L: {{ p.lote.numero_lote }}</td>
+                        <td>{{ p.condicion_pago.nombre }}</td>
+                        <td class="text-center">{{ p.cantidad_cuotas }}</td>
+                        <td class="text-end">{{ "{:,.0f}".format(p.precio_cuota).replace(',', '.') }}</td>
+                        <td class="text-end fw-bold">{{ "{:,.0f}".format(p.precio_total).replace(',', '.') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center">No hay planes de precios cargados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

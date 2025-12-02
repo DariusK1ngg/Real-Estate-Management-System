@@ -1,0 +1,24 @@
+/* Estilos para las páginas de Definiciones (ej: cobros/definiciones.html) */
+
+/* Contenedor de pestañas */
+.tabs-container {
+    background-color: #fff;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Encabezado para las tablas de CRUD */
+.crud-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.crud-header h3 {
+    margin: 0;
+    font-size: 1.5rem;
+}

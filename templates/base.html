@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Sistema de Gestión Inmobiliaria</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="logo">
+                <a href="{{ url_for('auth.admin_dashboard') }}" style="text-decoration: none; color: white;">
+                    <h2>🏠 Inmobiliaria</h2>
+                </a>
+            </div>
+            <nav class="main-nav">
+                <ul>
+                    {% if current_user.has_role('Admin') or current_user.has_role('Empleado') or current_user.has_role('Vendedor') %}
+                    <li class="nav-item">
+                        <a href="{{ url_for('auth.admin_mapa') }}" class="nav-link"><span>🗺️ Mapa</span></a>
+                    </li>
+                    {% endif %}
+
+                    {% if current_user.has_role('Admin') or current_user.has_role('Cajero') %}
+                    <li class="nav-item has-submenu">
+                        <a href="#" class="nav-link"><span>💰 Gestión de Cobros</span><span class="arrow">▼</span></a>
+                        <ul class="submenu">
+                            <li><a href="{{ url_for('cobros.cobros_definiciones') }}">Definiciones</a></li>
+                            <li><a href="{{ url_for('cobros.cobros_movimientos') }}">Movimientos</a></li>
+                            <li><a href="{{ url_for('cobros.cobros_reportes') }}">Reportes</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+
+                    {% if current_user.has_role('Admin') or current_user.has_role('Empleado') or current_user.has_role('Vendedor') %}
+                    <li class="nav-item has-submenu">
+                        <a href="#" class="nav-link"><span>📦 Gestión de Inventario</span><span class="arrow">▼</span></a>
+                        <ul class="submenu">
+                            <li><a href="{{ url_for('inventario.inventario_movimientos') }}">Movimientos</a></li>
+                            <li><a href="{{ url_for('inventario.inventario_reportes') }}">Reportes</a></li>
+                            <li><a href="{{ url_for('inventario.inventario_definiciones') }}">Definiciones</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+
+                    {% if current_user.has_role('Admin') or current_user.has_role('Cajero') %}
+                    <li class="nav-item has-submenu">
+                        <a href="#" class="nav-link"><span>🏦 Tesorería</span><span class="arrow">▼</span></a>
+                        <ul class="submenu">
+                            <li><a href="{{ url_for('tesoreria.tesoreria_definiciones') }}">Definiciones</a></li>
+                            <li><a href="{{ url_for('tesoreria.tesoreria_movimientos') }}">Movimientos</a></li>
+                            <li><a href="{{ url_for('tesoreria.tesoreria_reportes') }}">Reportes</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+
+                    {% if current_user.has_role('Admin') %}
+                    <li class="nav-item has-submenu">
+                        <a href="#" class="nav-link"><span>⚙️ Módulo Base</span><span class="arrow">▼</span></a>
+                        <ul class="submenu">
+                            <li><a href="{{ url_for('base.base_definiciones') }}">Definiciones</a></li>
+                            <li><a href="{{ url_for('audit.audit_logs_view') }}">Auditoría del Sistema</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+
+                    {% if current_user.has_role('Admin') or current_user.has_role('Cajero') or current_user.has_role('Empleado') %}
+                    <li class="nav-item has-submenu">
+                        <a href="#" class="nav-link"><span>💸 Gestión de Gastos</span><span class="arrow">▼</span></a>
+                        <ul class="submenu">
+                            <li><a href="{{ url_for('gastos.gastos_definiciones') }}">Definiciones</a></li>
+                            <li><a href="{{ url_for('gastos.gastos_movimientos') }}">Movimientos</a></li>
+                            <li><a href="{{ url_for('gastos.gastos_reportes') }}">Reportes</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                    
+                    {% if current_user.has_role('Admin') or current_user.has_role('Empleado') or current_user.has_role('Vendedor') %}
+                    <li class="nav-item has-submenu">
+                        <a href="#" class="nav-link"><span>📊 Gestión de Ventas</span><span class="arrow">▼</span></a>
+                        <ul class="submenu">
+                            <li><a href="{{ url_for('ventas.ventas_definiciones') }}">Definiciones</a></li>
+                            <li><a href="{{ url_for('ventas.ventas_movimientos') }}">Movimientos</a></li>
+                            <li><a href="{{ url_for('ventas.ventas_reportes') }}">Reportes</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+
+                    {% if current_user.has_role('Admin') %}
+                    <li class="nav-item has-submenu">
+                        <a href="#" class="nav-link"><span>👥 Recursos Humanos</span><span class="arrow">▼</span></a>
+                        <ul class="submenu">
+                            <li><a href="{{ url_for('rrhh.rrhh_definiciones') }}">Definiciones</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+
+        <div class="main-content">
+            <div class="topbar">
+                <div class="breadcrumb">
+                    {% block breadcrumb %}{% endblock %}
+                </div>
+                
+                <div class="global-search-container position-relative mx-4 flex-grow-1" style="max-width: 400px;">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
+                        <input type="text" id="globalSearchInput" class="form-control border-start-0 bg-light" placeholder="Buscar cliente, lote, contrato..." autocomplete="off">
+                    </div>
+                    <div id="globalSearchResults" class="search-results-dropdown shadow-sm"></div>
+                </div>
+
+                <div class="user-actions">
+                    <a href="{{ url_for('auth.index') }}" class="btn-outline">Ver sitio público</a>
+                    <a href="{{ url_for('auth.logout') }}" class="btn-logout">Cerrar sesión</a>
+                </div>
+            </div>
+
+            <div class="content-wrapper">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
+    <script>
+        $(document).ready(function() {
+            $('.select2').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                placeholder: 'Seleccione una opción',
+                language: {
+                    noResults: function() {
+                        return "No se encontraron resultados";
+                    }
+                }
+            });
+            
+            $.fn.modal.Constructor.prototype.enforceFocus = function() {};
+        });
+    </script>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

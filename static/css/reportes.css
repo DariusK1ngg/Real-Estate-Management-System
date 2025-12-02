@@ -1,0 +1,142 @@
+/* static/css/reportes.css */
+
+/* Estilos generales de la tabla */
+.table-reporte th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+}
+
+.table-reporte tfoot {
+    border-top: 2px solid #dee2e6;
+    font-weight: bold;
+}
+
+/* Estilos para el Estado de Cuenta (Cobros) */
+.contrato-card { 
+    border: 1px solid #dee2e6; 
+    border-radius: 8px; 
+    margin-bottom: 20px; 
+    overflow: hidden; 
+    page-break-inside: avoid; /* Evita que se corte al imprimir */
+}
+
+.contrato-header { 
+    background-color: #f8f9fa; 
+    padding: 15px; 
+    border-bottom: 1px solid #dee2e6; 
+}
+
+.info-box { 
+    background: #fff; 
+    padding: 10px; 
+    border-radius: 4px; 
+    text-align: center; 
+    border: 1px solid #eee; 
+}
+
+.info-label { 
+    display: block; 
+    font-size: 0.8em; 
+    color: #666; 
+    text-transform: uppercase; 
+}
+
+.info-value { 
+    font-weight: bold; 
+    font-size: 1.1em; 
+    color: #2e7dff; 
+}
+
+/* === ESTILOS ESPECÍFICOS PARA IMPRESIÓN === */
+@media print {
+    @page {
+        size: auto;
+        margin: 10mm;
+    }
+
+    /* Ocultar interfaz de usuario */
+    .sidebar, 
+    .topbar, 
+    .main-nav,
+    .btn, 
+    form, 
+    .card-header,
+    .breadcrumb,
+    .no-print,
+    .modal,
+    .nav-tabs {
+        display: none !important;
+    }
+
+    /* Resetear contenedores para usar toda la hoja */
+    body, 
+    html,
+    .app-container, 
+    .main-content, 
+    .content-wrapper, 
+    .card, 
+    .card-body,
+    .tab-content,
+    .tab-pane {
+        background-color: #fff !important;
+        width: 100% !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+        position: static !important;
+        display: block !important;
+    }
+
+    /* Mostrar solo el contenido del reporte visible */
+    .tab-pane.active .printable-area,
+    .tab-pane.active #resultadoArqueo,
+    .tab-pane.active #resultadoCliente,
+    #panelResultados .printable-area {
+        display: block !important;
+        visibility: visible !important;
+        width: 100% !important;
+    }
+
+    /* Ocultar pestañas no activas explícitamente */
+    .tab-pane:not(.active) {
+        display: none !important;
+    }
+
+    /* Corrección de tablas */
+    .table-responsive {
+        overflow: visible !important;
+        display: block !important;
+        width: 100% !important;
+    }
+
+    .table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+
+    .table th, .table td {
+        background-color: #fff !important;
+        color: #000 !important;
+        border: 1px solid #dee2e6 !important;
+    }
+
+    /* Colores para impresión */
+    .text-success, .text-danger, .text-primary {
+        color: #000 !important;
+    }
+    
+    .badge {
+        border: 1px solid #000;
+        color: #000 !important;
+        font-weight: bold;
+    }
+    
+    .info-box {
+        border: 1px solid #000 !important;
+    }
+}

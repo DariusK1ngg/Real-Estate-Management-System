@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block breadcrumb %}
+Gestión de Inventario / Definiciones
+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Definiciones de Inventario</h2>
+    </div>
+    <div class="card-body">
+        <p>Seleccione una opción para administrar:</p>
+        <ul>
+            <li><a href="{{ url_for('inventario.inventario_definiciones') }}">Administrar Fraccionamientos y Lotes</a></li>
+            </ul>
+    </div>
+</div>
+{% endblock %}

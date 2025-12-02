@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Seguridad / Auditoría del Sistema
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Registro de Auditoría (Logs)</h2>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover no-datatable" id="tablaLogs">
+                <thead>
+                    <tr>
+                        <th>Fecha/Hora</th>
+                        <th>Usuario</th>
+                        <th>Acción</th>
+                        <th>Módulo/Tabla</th>
+                        <th>Detalle</th>
+                        <th>IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>{{ log.fecha.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                        <td>
+                            <span class="badge bg-secondary">{{ log.usuario.usuario if log.usuario else 'Sistema' }}</span>
+                        </td>
+                        <td>
+                            {% if log.accion == 'CREAR' %}
+                                <span class="badge bg-success">CREAR</span>
+                            {% elif log.accion == 'EDITAR' %}
+                                <span class="badge bg-warning text-dark">EDITAR</span>
+                            {% elif log.accion == 'ELIMINAR' %}
+                                <span class="badge bg-danger">ELIMINAR</span>
+                            {% else %}
+                                <span class="badge bg-info">{{ log.accion }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log.tabla }}</td>
+                        <td>{{ log.detalle }}</td>
+                        <td><small class="text-muted">{{ log.ip_address }}</small></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#tablaLogs').DataTable({
+            "order": [[ 0, "desc" ]],
+            language: { url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" }
+        });
+    });
+</script>
+{% endblock %}

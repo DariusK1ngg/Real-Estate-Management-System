@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Login administrador</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, sans-serif; display:grid; place-items:center; height:100vh; margin:0; background:#f6f7fb; }
+    .card { width: 320px; background:#fff; border:1px solid #eee; border-radius:12px; padding:20px; box-shadow:0 4px 16px rgba(0,0,0,.06)}
+    .card h1 { font-size:18px; margin:0 0 12px }
+    .fld { display:flex; flex-direction:column; gap:6px; margin-bottom:12px }
+    input { padding:10px; border:1px solid #ddd; border-radius:8px; }
+    button { width:100%; padding:10px; border:0; border-radius:8px; background:#2e7dff; color:#fff; cursor:pointer }
+    a { color:#2e7dff; text-decoration:none; font-size:14px }
+    .flash { color:#d00; margin-bottom:8px; font-size:14px }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Acceso</h1>
+    
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}
+      {% for cat, msg in msgs %}
+        <div class="flash">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+      <div class="fld">
+        <label>Usuario</label>
+        <input type="text" name="username" required />
+      </div>
+      <div class="fld">
+        <label>Contraseña</label>
+        <input type="password" name="password" required />
+      </div>
+      <button type="submit">Entrar</button>
+    </form>
+    
+    <div style="margin-top:10px"><a href="/">Volver al mapa</a></div>
+  </div>
+</body>
+</html>

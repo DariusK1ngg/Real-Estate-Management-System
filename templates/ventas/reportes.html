@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Gestión de Ventas / Reportes
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Reportes de Servicios</h5>
+        </div>
+        <div class="card-body">
+            <form id="formReporteVentas" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Tipo de Reporte</label>
+                    <select class="form-select" id="tipoReporte">
+                        <option value="servicios_tipo">Total por Tipo de Servicio</option>
+                        <option value="servicios_estado">Estado de Cobro (Pagados vs Pendientes)</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Fecha Vencimiento Desde</label>
+                    <input type="date" class="form-control" id="fechaDesde" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Fecha Vencimiento Hasta</label>
+                    <input type="date" class="form-control" id="fechaHasta" required>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-chart-bar me-1"></i> Generar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="panelResultados" class="card" style="display: none;">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Resultados</h5>
+            <button class="btn btn-sm btn-secondary no-print" onclick="window.print()">
+                <i class="fas fa-print"></i> Imprimir
+            </button>
+        </div>
+        <div class="card-body printable-area">
+            <div class="text-center mb-4">
+                <h4 id="tituloReporte">Reporte de Servicios</h4>
+                <p class="text-muted" id="periodoReporte"></p>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-striped table-hover table-bordered table-reporte">
+                    <thead class="table-dark">
+                        <tr>
+                            <th id="thColumnaPrincipal">Concepto</th>
+                            <th class="text-center">Cantidad</th>
+                            <th class="text-end">Monto Total (Gs.)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyResultados">
+                    </tbody>
+                    <tfoot>
+                        <tr class="fw-bold bg-light">
+                            <td colspan="2" class="text-end">TOTAL GENERAL:</td>
+                            <td class="text-end" id="totalGeneral">0</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/reportes_ventas.js') }}"></script>
+{% endblock %}

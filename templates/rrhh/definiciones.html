@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Recursos Humanos / Definiciones
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Definiciones de Recursos Humanos</h2>
+    </div>
+    <div class="card-body">
+        <p>Selecciona una de las siguientes opciones para administrar los datos maestros de RRHH.</p>
+        <div class="quick-access-grid">
+            <a href="{{ url_for('rrhh.rrhh_definiciones_funcionarios') }}" class="btn btn-primary">
+                <span class="icon">👥</span>
+                Gestionar Funcionarios
+            </a>
+            <a href="{{ url_for('rrhh.rrhh_definiciones_cargos') }}" class="btn btn-info">
+                <span class="icon">🏷️</span>
+                Gestionar Cargos
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.quick-access-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+.quick-access-grid .btn {
+    padding: 20px;
+    font-size: 1.2em;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+.quick-access-grid .icon {
+    font-size: 2.5em;
+}
+</style>
+{% endblock %}

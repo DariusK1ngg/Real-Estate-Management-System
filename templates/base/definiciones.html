@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Módulo Base / Definiciones
+{% endblock %}
+
+{% block content %}
+<div class="main-container">
+
+    <div class="tabs-container">
+        <ul class="nav nav-tabs" id="base-tabs" role="tablist">
+            <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-seguridad">Seguridad</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-parametros">Parámetros</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ubicaciones">Ubicaciones</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-cotizaciones">Cotizaciones</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-talonarios">Talonarios</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-impuestos">Impuestos</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-tipos-comprobante">Comprobantes</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-profesiones">Profesiones</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-tipos-documento">Documentos</button></li>
+        </ul>
+
+        <div class="tab-content pt-3">
+            <div id="tab-seguridad" class="tab-pane fade show active">
+                <div class="main-container-seguridad">
+                    <div class="card card-roles"><div class="card-header">Roles</div><div class="card-body"><div id="lista-roles" class="list-group"></div></div></div>
+                    <div class="card card-permissions"><div class="card-header">Permisos: <span id="rol-seleccionado-nombre">Ninguno</span></div><div id="panel-permisos" class="card-body" style="display:none;"><div id="lista-permisos" class="permissions-grid"></div><div class="card-footer"><button class="btn btn-primary" id="btnGuardarPermisos">Guardar</button></div></div></div>
+                </div>
+            </div>
+
+            <div id="tab-parametros" class="tab-pane fade">
+                <div class="crud-header"><h3>Parámetros del Sistema</h3><button class="btn btn-primary" onclick="abrirModalParametro()">+ Nuevo Parámetro</button></div>
+                <table class="table table-hover"><thead><tr><th>Clave</th><th>Valor</th><th>Descripción</th><th>Acciones</th></tr></thead><tbody id="tbody-parametros"></tbody></table>
+            </div>
+
+            <div id="tab-ubicaciones" class="tab-pane fade">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card"><div class="card-header d-flex justify-content-between"><h5>Ciudades</h5><button class="btn btn-sm btn-primary" onclick="abrirModalCiudad()">+ Ciudad</button></div>
+                        <div class="card-body"><table class="table"><thead><tr><th>Nombre</th><th>Acciones</th></tr></thead><tbody id="tbody-ciudades"></tbody></table></div></div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card"><div class="card-header d-flex justify-content-between"><h5>Barrios</h5><button class="btn btn-sm btn-primary" onclick="abrirModalBarrio()">+ Barrio</button></div>
+                        <div class="card-body"><select id="filtro-ciudad-barrio" class="form-select mb-2" onchange="cargarBarrios()"></select><table class="table"><thead><tr><th>Nombre</th><th>Acciones</th></tr></thead><tbody id="tbody-barrios"></tbody></table></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-cotizaciones" class="tab-pane fade">
+                <div class="crud-header"><h3>Cotizaciones</h3><button class="btn btn-primary" onclick="abrirModalCotizacion()">+ Nueva Cotización</button></div>
+                <table class="table table-hover"><thead><tr><th>Fecha</th><th>Origen</th><th>Destino</th><th>Compra</th><th>Venta</th><th>Acciones</th></tr></thead><tbody id="tbody-cotizaciones"></tbody></table>
+            </div>
+
+            <div id="tab-talonarios" class="tab-pane fade">
+                <div class="crud-header"><h3>Gestión de Talonarios</h3><button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalTalonario" id="btnNuevoTalonario">Nuevo Talonario</button></div>
+                <div class="table-responsive"><table class="table table-hover" id="tablaTalonarios"><thead><tr><th>Timbrado</th><th>Tipo</th><th>P.Exp - Caja</th><th>N° Actual</th><th>N° Fin</th><th>Vigencia</th><th>Activo</th><th>Acciones</th></tr></thead><tbody></tbody></table></div>
+            </div>
+
+            <div id="tab-impuestos" class="tab-pane fade">
+                <div class="crud-header"><h3>Impuestos</h3><button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSimple" data-endpoint="impuestos" data-title="Nuevo Impuesto">Nuevo Impuesto</button></div>
+                <table class="table table-hover"><tbody id="tbody-impuestos"></tbody></table>
+            </div>
+
+            <div id="tab-tipos-comprobante" class="tab-pane fade">
+                <div class="crud-header"><h3>Tipos de Comprobante</h3><button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSimple" data-endpoint="tipos-comprobante" data-title="Nuevo Tipo">Nuevo Tipo</button></div>
+                <table class="table table-hover"><tbody id="tbody-tipos-comprobante"></tbody></table>
+            </div>
+
+            <div id="tab-profesiones" class="tab-pane fade">
+                <div class="crud-header"><h3>Profesiones</h3><button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSimple" data-endpoint="profesiones" data-title="Nueva Profesión">Nueva Profesión</button></div>
+                <table class="table table-hover"><tbody id="tbody-profesiones"></tbody></table>
+            </div>
+            
+            <div id="tab-tipos-documento" class="tab-pane fade">
+                <div class="crud-header"><h3>Tipos de Documento</h3><button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSimple" data-endpoint="tipos-documentos" data-title="Nuevo Tipo">Nuevo Tipo</button></div>
+                <table class="table table-hover"><tbody id="tbody-tipos-documentos"></tbody></table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalSimple" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="modalSimpleTitle"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><form id="formSimple"><div class="modal-body"><input type="hidden" name="id" id="simpleId"><input type="hidden" id="simpleEndpoint"><div class="mb-3"><label class="form-label">Nombre</label><input type="text" class="form-control" name="nombre" id="simpleNombre" required></div><div class="mb-3" id="campoExtraSimple" style="display:none;"><label class="form-label" id="labelSimpleValor"></label><input type="text" class="form-control" id="simpleValor"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="btnGuardarSimple">Guardar</button></div></form></div></div></div>
+
+<div class="modal fade" id="modalTalonario" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="tituloModalTalonario">Nuevo Talonario</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><form id="formTalonario"><div class="modal-body"><input type="hidden" id="talonarioId"><div class="mb-3"><label class="form-label">Tipo</label><select class="form-select" id="talonarioTipo" required></select></div><div class="mb-3"><label class="form-label">Timbrado</label><input type="text" class="form-control" id="talonarioTimbrado" required></div><div class="row"><div class="col-6 mb-3"><label class="form-label">Inicio</label><input type="date" class="form-control" id="talonarioInicioVigencia" required></div><div class="col-6 mb-3"><label class="form-label">Fin</label><input type="date" class="form-control" id="talonarioFinVigencia" required></div></div><div class="row"><div class="col-6 mb-3"><label class="form-label">P. Exp</label><input type="text" class="form-control" id="talonarioPuntoExp" required></div><div class="col-6 mb-3"><label class="form-label">Caja</label><input type="text" class="form-control" id="talonarioCaja" required></div></div><div class="row"><div class="col-6 mb-3"><label class="form-label">N° Actual</label><input type="number" class="form-control" id="talonarioNumeroActual" required></div><div class="col-6 mb-3"><label class="form-label">N° Fin</label><input type="number" class="form-control" id="talonarioNumeroFin" required></div></div><div class="form-check"><input class="form-check-input" type="checkbox" id="talonarioActivo" checked><label class="form-check-label">Activo</label></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div></form></div></div></div>
+
+<div class="modal fade" id="modalParametro" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Parámetro del Sistema</h5><button type="button" class="btn-close" onclick="cerrarModal('modalParametro')"></button></div><form id="formParametro"><div class="modal-body"><input type="hidden" id="paramId"><div class="mb-3"><label class="form-label">Clave</label><input type="text" class="form-control" id="paramClave" required></div><div class="mb-3"><label class="form-label">Valor</label><input type="text" class="form-control" id="paramValor" required></div><div class="mb-3"><label class="form-label">Descripción</label><textarea class="form-control" id="paramDesc"></textarea></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="cerrarModal('modalParametro')">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div></form></div></div></div>
+
+<div class="modal fade" id="modalCiudad" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Ciudad</h5><button type="button" class="btn-close" onclick="cerrarModal('modalCiudad')"></button></div><form id="formCiudad"><div class="modal-body"><input type="hidden" id="ciudadId"><div class="mb-3"><label class="form-label">Nombre</label><input type="text" class="form-control" id="ciudadNombre" required></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="cerrarModal('modalCiudad')">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div></form></div></div></div>
+
+<div class="modal fade" id="modalBarrio" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Barrio</h5><button type="button" class="btn-close" onclick="cerrarModal('modalBarrio')"></button></div><form id="formBarrio"><div class="modal-body"><input type="hidden" id="barrioId"><div class="mb-3"><label class="form-label">Ciudad</label><select id="barrioCiudad" class="form-select" required></select></div><div class="mb-3"><label class="form-label">Nombre</label><input type="text" class="form-control" id="barrioNombre" required></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="cerrarModal('modalBarrio')">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div></form></div></div></div>
+
+<div class="modal fade" id="modalCotizacion" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Cotización</h5><button type="button" class="btn-close" onclick="cerrarModal('modalCotizacion')"></button></div><form id="formCotizacion"><div class="modal-body"><input type="hidden" id="cotId"><div class="mb-3"><label class="form-label">Fecha</label><input type="date" class="form-control" id="cotFecha" required></div><div class="row"><div class="col-6 mb-3"><label class="form-label">Origen</label><select id="cotOrigen" class="form-select"><option value="USD">USD</option><option value="PYG">PYG</option></select></div><div class="col-6 mb-3"><label class="form-label">Destino</label><select id="cotDestino" class="form-select"><option value="PYG">PYG</option><option value="USD">USD</option></select></div></div><div class="row"><div class="col-6 mb-3"><label class="form-label">Compra</label><input type="number" step="0.01" class="form-control" id="cotCompra" required></div><div class="col-6 mb-3"><label class="form-label">Venta</label><input type="number" step="0.01" class="form-control" id="cotVenta" required></div></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="cerrarModal('modalCotizacion')">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div></form></div></div></div>
+
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/base_module.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/definiciones.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/base_module.js') }}"></script>
+<script src="{{ url_for('static', filename='js/definiciones_base.js') }}"></script>
+{% endblock %}

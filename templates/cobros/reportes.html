@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Gestión de Cobros / Reportes
+{% endblock %}
+
+{% block content %}
+<div class="tabs-container">
+    <ul class="nav nav-tabs" id="reportes-tabs" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" id="tab-arqueo-btn" data-bs-toggle="tab" data-bs-target="#tab-arqueo" type="button" role="tab">
+                <i class="fas fa-cash-register me-2"></i>Arqueo de Caja
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-clientes-btn" data-bs-toggle="tab" data-bs-target="#tab-clientes" type="button" role="tab">
+                <i class="fas fa-user-tag me-2"></i>Extracto de Clientes
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content pt-4">
+        
+        <div class="tab-pane fade show active" id="tab-arqueo" role="tabpanel">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Generar Arqueo</h5>
+                </div>
+                <div class="card-body">
+                    <form id="formArqueo" class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label">Seleccionar Caja</label>
+                            <select class="form-select" id="cajaId" required>
+                                <option value="1">Caja General</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Desde</label>
+                            <input type="date" class="form-control" id="fechaDesde" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Hasta</label>
+                            <input type="date" class="form-control" id="fechaHasta" required>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search"></i> Generar
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div id="resultadoArqueo" style="display:none;" class="mt-4">
+                        <div class="d-flex justify-content-end mb-2 no-print">
+                            <button class="btn btn-sm btn-secondary" onclick="window.print()">
+                                <i class="fas fa-print"></i> Imprimir
+                            </button>
+                        </div>
+                        
+                        <div class="printable-area">
+                            <h4 class="text-center mb-3">PLANILLA DE ARQUEO DE CAJA</h4>
+                            <table class="table table-bordered table-reporte">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Fecha/Hora</th>
+                                        <th>Tipo</th>
+                                        <th>Concepto</th>
+                                        <th>Usuario</th>
+                                        <th class="text-end">Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyMovimientos"></tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <td colspan="4" class="text-end">Total Ingresos:</td>
+                                        <td class="text-end text-success" id="totalIngresos">0</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="text-end">Total Egresos:</td>
+                                        <td class="text-end text-danger" id="totalEgresos">0</td>
+                                    </tr>
+                                    <tr class="fs-5">
+                                        <td colspan="4" class="text-end">SALDO DEL PERIODO:</td>
+                                        <td class="text-end fw-bold" id="saldoPeriodo">0</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-clientes" role="tabpanel">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Consultar Estado de Cuenta</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4 no-print">
+                        <div class="col-md-8 position-relative">
+                            <label class="form-label">Buscar Cliente</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="cliente_buscador_reporte" 
+                                   placeholder="Escribe el nombre o documento del cliente..." 
+                                   autocomplete="off">
+                            
+                            <input type="hidden" id="cliente_id_reporte">
+
+                            <div id="lista_resultados_cliente_reporte" 
+                                 class="list-group position-absolute w-100 shadow" 
+                                 style="z-index: 1000; display: none; max-height: 250px; overflow-y: auto;">
+                            </div>
+                        </div>
+
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button class="btn btn-info w-100 text-white" id="btnGenerarExtracto" onclick="generarEstadoCuenta()" disabled>
+                                <i class="fas fa-file-invoice-dollar me-2"></i>Ver Estado de Cuenta
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="resultadoCliente" style="display: none;">
+                        <div class="d-flex justify-content-end mb-2 no-print">
+                            <button class="btn btn-sm btn-secondary" onclick="window.print()">
+                                <i class="fas fa-print"></i> Imprimir
+                            </button>
+                        </div>
+
+                        <div class="printable-area">
+                            <div class="text-center mb-4">
+                                <h3>ESTADO DE CUENTA</h3>
+                            </div>
+                            <div class="alert alert-info mb-4">
+                                <h4 id="nombreClienteHeader" class="mb-0 fw-bold"></h4>
+                                <small id="docClienteHeader"></small>
+                            </div>
+                            
+                            <div id="contenedorContratos">
+                                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reportes.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="{{ url_for('static', filename='js/reportes_cobros.js') }}"></script>
+{% endblock %}

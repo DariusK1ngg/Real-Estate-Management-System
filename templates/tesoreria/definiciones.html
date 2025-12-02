@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Gestión de Tesorería / Definiciones
+{% endblock %}
+
+{% block content %}
+<div class="tabs-container">
+    
+    <ul class="nav nav-tabs" id="tesoreria-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-entidades-btn" data-bs-toggle="tab" data-bs-target="#tab-entidades" type="button" role="tab" aria-selected="true">
+                <i class="fas fa-university me-2"></i> Entidades Financieras
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-cuentas-btn" data-bs-toggle="tab" data-bs-target="#tab-cuentas" type="button" role="tab" aria-selected="false">
+                <i class="fas fa-wallet me-2"></i> Cuentas Bancarias
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content pt-4" id="tesoreria-tabs-content">
+        
+        <div class="tab-pane fade show active" id="tab-entidades" role="tabpanel" aria-labelledby="tab-entidades-btn">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="text-primary m-0">Entidades Financieras</h3>
+                <button class="btn btn-primary shadow-sm" onclick="abrirModalEntidad()">
+                    <i class="fas fa-plus-circle me-1"></i> Nueva Entidad
+                </button>
+            </div>
+            
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Nombre de la Entidad</th>
+                                    <th class="text-end pe-4" style="width: 200px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyEntidades">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-cuentas" role="tabpanel" aria-labelledby="tab-cuentas-btn">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="text-primary m-0">Cuentas Bancarias</h3>
+                <button class="btn btn-primary shadow-sm" onclick="abrirModalCuenta()">
+                    <i class="fas fa-plus-circle me-1"></i> Nueva Cuenta
+                </button>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Entidad</th>
+                                    <th>Número</th>
+                                    <th>Titular</th>
+                                    <th>Tipo</th>
+                                    <th>Moneda</th>
+                                    <th class="text-end">Saldo</th>
+                                    <th class="text-end pe-4">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyCuentas">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal fade" id="modalEntidad" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalEntidadTitle">
+                    Nueva Entidad Financiera
+                </h5>
+                <button type="button" class="btn-close btn-close-white" onclick="cerrarModal('modalEntidad')" aria-label="Close"></button>
+            </div>
+            <form id="formEntidad">
+                <div class="modal-body p-4">
+                    <input type="hidden" id="entidad_id" name="id">
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="entidad_nombre" name="nombre" placeholder="Nombre" required>
+                        <label for="entidad_nombre">Nombre de la Entidad</label>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalEntidad')">Cancelar</button>
+                    <button type="button" class="btn btn-success" onclick="guardarEntidad()">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalCuenta" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalCuentaTitle">
+                    Nueva Cuenta Bancaria
+                </h5>
+                <button type="button" class="btn-close btn-close-white" onclick="cerrarModal('modalCuenta')" aria-label="Close"></button>
+            </div>
+            <form id="formCuenta">
+                <div class="modal-body p-4">
+                    <input type="hidden" id="cuenta_id" name="id">
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <select id="cuenta_entidad" name="entidad_id" class="form-select" required>
+                                    <option value="">Cargando...</option>
+                                </select>
+                                <label for="cuenta_entidad">Entidad Financiera</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <input type="text" id="cuenta_numero" name="numero_cuenta" class="form-control" placeholder="N° Cuenta" required>
+                                <label for="cuenta_numero">Número de Cuenta</label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-floating">
+                                <input type="text" id="cuenta_titular" name="titular" class="form-control" placeholder="Titular" required>
+                                <label for="cuenta_titular">Titular de la Cuenta</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <select id="cuenta_tipo" name="tipo_cuenta" class="form-select" required>
+                                    <option value="corriente">Cuenta Corriente</option>
+                                    <option value="ahorro">Caja de Ahorro</option>
+                                </select>
+                                <label for="cuenta_tipo">Tipo de Cuenta</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <select id="cuenta_moneda" name="moneda" class="form-select" required>
+                                    <option value="PYG">Guaraníes (PYG)</option>
+                                    <option value="USD">Dólares (USD)</option>
+                                </select>
+                                <label for="cuenta_moneda">Moneda</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalCuenta')">Cancelar</button>
+                    <button type="button" class="btn btn-success" onclick="guardarCuenta()">Guardar Datos</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tesoreria.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/tesoreria.js') }}"></script>
+{% endblock %}

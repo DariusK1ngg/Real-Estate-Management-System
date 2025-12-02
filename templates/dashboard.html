@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+<span style="color: #2e7dff;">🏠 Inmobiliaria</span> / Panel Principal
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">
+            Hola {{ current_user.nombre }}, es es la Dashboard
+        </h2>
+    </div>
+    <div class="card-body">
+        <!-- Estadísticas -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 style="color: #2e7dff; margin-bottom: 10px;">{{ total_lotes }}</h3>
+                    <p style="margin: 0;">Lotes Totales</p>
+                </div>
+            </div>
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 style="color: #28a745; margin-bottom: 10px;">{{ disponibles }}</h3>
+                    <p style="margin: 0;">Lotes Disponibles</p>
+                </div>
+            </div>
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 style="color: #ffc107; margin-bottom: 10px;">{{ reservados }}</h3>
+                    <p style="margin: 0;">Lotes Reservados</p>
+                </div>
+            </div>
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 style="color: #dc3545; margin-bottom: 10px;">{{ vendidos }}</h3>
+                    <p style="margin: 0;">Lotes Vendidos</p>
+                </div>
+            </div>
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 style="color: #17a2b8; margin-bottom: 10px;">{{ total_clientes }}</h3>
+                    <p style="margin: 0;">Clientes Registrados</p>
+                </div>
+            </div>
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 style="color: #6f42c1; margin-bottom: 10px;">{{ contratos_activos }}</h3>
+                    <p style="margin: 0;">Contratos Activos</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Accesos rápidos -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Accesos Rápidos</h3>
+            </div>
+            <div class="card-body">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <a href="{{ url_for('auth.admin_mapa') }}" class="btn btn-primary">🗺️ Mapa Interactivo</a>
+                    <a href="{{ url_for('inventario.inventario_movimientos') }}" class="btn btn-success">📦 Gestión de Inventario</a>
+                    <a href="{{ url_for('cobros.cobros_movimientos') }}" class="btn btn-info">💰 Gestión de Cobros</a>
+                    <a href="{{ url_for('ventas.ventas_definiciones_clientes') }}" class="btn btn-warning">📊 Gestionar clientes</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actividad reciente -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h3 class="card-title">Actividad Reciente</h3>
+            </div>
+            <div class="card-body">
+                <div class="activity-list">
+                    <div class="activity-item">
+                        <div class="activity-icon">📊</div>
+                        <div class="activity-content">
+                            <p><strong>Sistema iniciado</strong></p>
+                            <small>Dashboard cargado con estadísticas en tiempo real</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.activity-list {
+    max-width: 600px;
+}
+.activity-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+.activity-icon {
+    font-size: 20px;
+    margin-right: 15px;
+}
+.activity-content p {
+    margin: 0;
+}
+.activity-content small {
+    color: #666;
+}
+</style>
+{% endblock %}

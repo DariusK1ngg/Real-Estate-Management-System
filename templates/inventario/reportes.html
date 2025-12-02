@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Gestión del Inventario / Reportes
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Reportes de Inventario</h2>
+    </div>
+    <div class="card-body">
+        <div class="row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+            <div class="card">
+                <div class="card-body">
+                    <h4>Listado de Contratos</h4>
+                    <p>Reporte completo de contratos</p>
+                    <a href="{{ url_for('reportes.reporte_contratos_view') }}" class="btn btn-primary">Generar Reporte</a>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-body">
+                    <h4>Listado de Inmuebles</h4>
+                    <p>Inventario de propiedades y estado</p>
+                    <a href="{{ url_for('reportes.reporte_inmuebles_view') }}" class="btn btn-primary">Generar Reporte</a>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-body">
+                    <h4>Listas de Precios</h4>
+                    <p>Tarifarios y planes de financiación</p>
+                    <a href="{{ url_for('reportes.reporte_precios_view') }}" class="btn btn-primary">Generar Reporte</a>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-body">
+                    <h4>Liquidaciones</h4>
+                    <p>Reportes de liquidación</p>
+                    <a href="{{ url_for('reportes.reporte_liquidacion_view') }}" class="btn btn-primary">Generar Reporte</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

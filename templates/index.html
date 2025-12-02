@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Mapa de Lotes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <strong>Mapa de Lotes</strong>
+    <div class="select-wrap" style="margin-left:16px">
+      <label for="sel-frac">Fraccionamiento:</label>
+      <select id="sel-frac">
+        <option value="">— Selecciona —</option>
+      </select>
+    </div>
+    <div style="margin-left:auto">
+      <a href="/login">Acceder</a>
+    </div>
+  </div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="/static/js/map.js"></script>
+</body>
+</html>

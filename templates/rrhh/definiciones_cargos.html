@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Recursos Humanos / Definiciones / Cargos
+{% endblock %}
+
+{% block content %}
+<div id="modalCargo" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalCargoTitle">Nuevo Cargo</h3>
+            <span class="close" onclick="cerrarModal('modalCargo')">&times;</span>
+        </div>
+        <form id="formCargo" class="modal-body">
+            <input type="hidden" id="cargo_id" name="id">
+            <div class="form-group">
+                <label for="cargo_nombre">Nombre del Cargo</label>
+                <input type="text" id="cargo_nombre" name="nombre" class="form-control" required>
+            </div>
+        </form>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalCargo')">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="guardarCargo()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Gestión de Cargos</h2>
+        <button class="btn btn-primary" onclick="abrirModalCargo()">+ Nuevo Cargo</button>
+    </div>
+    <div class="card-body">
+        <table class="table">
+            <thead><tr><th>Nombre del Cargo</th><th>Acciones</th></tr></thead>
+            <tbody id="tbodyCargos"></tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/rrhh.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/rrhh.js') }}"></script>
+{% endblock %}

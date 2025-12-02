@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}
+Gestión de Ventas / Definiciones
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header p-0 border-bottom-0">
+        <ul class="nav nav-tabs" id="definiciones-tabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link {% if active_tab != 'clientes' %}active{% endif %}" id="tab-servicios" data-bs-toggle="tab" href="#content-servicios" role="tab">
+                    <i class="fas fa-concierge-bell"></i> Catálogo de Servicios
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if active_tab == 'clientes' %}active{% endif %}" id="tab-clientes" data-bs-toggle="tab" href="#content-clientes" role="tab">
+                    <i class="fas fa-users"></i> Gestión de Clientes
+                </a>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body bg-white border border-top-0 rounded-bottom">
+        <div class="tab-content">
+            
+            <div class="tab-pane fade {% if active_tab != 'clientes' %}show active{% endif %}" id="content-servicios" role="tabpanel">
+                <div class="row mb-3 g-2 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">Nombre del Servicio</label>
+                        <input type="text" id="nuevo-servicio-nombre" class="form-control" placeholder="Ej: Limpieza de Terreno">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">Precio Base (Gs)</label>
+                        <input type="text" id="nuevo-servicio-precio" class="form-control input-money" placeholder="0">
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-primary w-100" onclick="guardarServicio()">
+                            <i class="fas fa-plus"></i> Agregar
+                        </button>
+                    </div>
+                </div>
+                
+                <table class="table table-bordered table-striped align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Servicio</th>
+                            <th>Precio Defecto</th>
+                            <th class="text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-servicios-definicion"></tbody>
+                </table>
+            </div>
+
+            <div class="tab-pane fade {% if active_tab == 'clientes' %}show active{% endif %}" id="content-clientes" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="m-0 text-primary">Base de Datos de Clientes</h4>
+                    <button class="btn btn-success shadow-sm" onclick="abrirModalCliente()">
+                        <i class="fas fa-user-plus me-2"></i> Nuevo Cliente
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover border">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Nombre Completo</th>
+                                <th>Documento</th>
+                                <th>Teléfono</th>
+                                <th>Ciudad</th>
+                                <th>Estado</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-clientes"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalCliente" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalClienteTitle">Gestión de Cliente</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formCliente">
+                    <input type="hidden" id="cliente_id" name="id">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Tipo Documento</label>
+                            <select name="tipo_documento_id" id="selectTipoDoc" class="form-select" required></select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold">Número de Documento</label>
+                            <input type="text" name="documento" class="form-control" required placeholder="Ej: 1234567">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Nombres</label>
+                            <input type="text" name="nombre" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Apellidos</label>
+                            <input type="text" name="apellido" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Profesión / Ocupación</label>
+                            <select name="profesion_id" id="selectProfesion" class="form-select"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tipo de Cliente</label>
+                            <select name="tipo_cliente_id" id="selectTipoCliente" class="form-select"></select>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Ciudad</label>
+                            <select name="ciudad_id" id="selectCiudad" class="form-select"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Barrio</label>
+                            <select name="barrio_id" id="selectBarrio" class="form-select" disabled>
+                                <option value="">-- Seleccione Ciudad Primero --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Dirección Exacta</label>
+                        <textarea name="direccion" class="form-control" rows="2"></textarea>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Teléfono / Celular</label>
+                            <input type="text" name="telefono" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Correo Electrónico</label>
+                            <input type="email" name="email" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Estado</label>
+                        <select name="estado" class="form-select">
+                            <option value="activo">Activo</option>
+                            <option value="inactivo">Inactivo</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="guardarCliente()">
+                    <i class="fas fa-save me-1"></i> Guardar Cliente
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ventas.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        cargarDefinicionesServicios();
+        cargarClientesDefinicion();
+    });
+</script>
+{% endblock %}
