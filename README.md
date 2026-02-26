@@ -1,57 +1,57 @@
-Real Estate Management System 🏢
-Sistema Integral de Gestión Inmobiliaria y Automatización Financiera
-📋 Descripción
-Este sistema fue diseñado para optimizar las operaciones de gestión de propiedades y el seguimiento financiero en el sector inmobiliario. Combina un robusto backend en Python/Flask con herramientas de automatización para la generación de reportes y reconciliación de datos impositivos.
+# 🏢 Real Estate Management System
+> **Sistema Integral de Gestión Inmobiliaria y Automatización de Procesos Financieros.**
 
-🛠️ Características Técnicas
-El proyecto implementa estándares de desarrollo profesional y de seguridad:
+Este proyecto representa una solución robusta para la administración de propiedades, integrando seguridad avanzada, auditoría de datos y herramientas de automatización para optimizar la operativa diaria en el sector inmobiliario.
 
-Arquitectura Modular: Uso de Flask Blueprints para una organización de código escalable y mantenible.
+---
 
-Seguridad Avanzada: Implementación de protección contra ataques CSRF y validación de datos en formularios.
+## 🚀 Características Principales
 
-Sistema de Auditoría: Registro automático de acciones de usuario para trazabilidad total de los cambios en el sistema.
+| Módulo | Descripción |
+| :--- | :--- |
+| **🛡️ Seguridad** | Protección contra ataques **CSRF** y validación estricta de formularios. |
+| **📑 Auditoría** | Registro histórico de acciones (Logs) para trazabilidad total de cambios. |
+| **🗑️ Integridad** | Implementación de **Soft Deletes** (eliminación lógica) para evitar pérdida de datos críticos. |
+| **🤖 Automatización** | Scripts para reportes financieros en Excel y carga masiva en el sistema **Tesakã**. |
+| **🏗️ Arquitectura** | Estructura modular basada en **Flask Blueprints** para alta escalabilidad. |
 
-Integridad de Datos: Uso de Soft Deletes para evitar la pérdida accidental de información crítica.
+---
 
-Automatización con Python: Scripts integrados para:
+## 🛠️ Stack Tecnológico
 
-Generación de reportes financieros automáticos a partir de archivos Excel.
+* **Lenguaje:** [Python 3.9+](https://www.python.org/)
+* **Framework Web:** [Flask](https://flask.palletsprojects.com/)
+* **Bases de Datos:** * **Producción:** Oracle Database
+    * **Desarrollo:** SQLite
+* **Herramientas de Datos:** Pandas / Openpyxl (para automatización de Excel)
+* **Frontend:** Jinja2, HTML5, CSS3, JavaScript
 
-Reconciliación de deudas de impuestos inmobiliarios mediante comparación de datasets.
+---
 
-Automatización de carga de formularios de retención para el sistema Tesakã.
+## 📊 Capacidades de Automatización
+Como parte de la optimización del flujo de trabajo, el sistema incluye herramientas especializadas:
 
-🗄️ Tecnologías Utilizadas
-Backend: Python 3 (Flask).
+1.  **Reconciliación de Impuestos:** Comparación automática de datasets para identificar clientes con pagos pendientes.
+2.  **Reportes de Propietarios:** Generación dinámica de estados financieros a partir de archivos Excel.
+3.  **Integración Tesakã:** Script de automatización para la entrada de datos en formularios de retención impositiva.
 
-Base de Datos: Soporte para Oracle (entorno de producción) y SQLite (desarrollo).
+---
 
-Frontend: HTML5, CSS3, JavaScript y Jinja2 Templates.
+## ⚙️ Instalación Rápida
 
-Gestión de Migraciones: Flask-Migrate para el control de versiones del esquema de base de datos.
+1. **Clonar el repositorio:**
+   ```bash
+   git clone [https://github.com/DariusK1ngg/Real-Estate-Management-System.git](https://github.com/DariusK1ngg/Real-Estate-Management-System.git)
+   cd Real-Estate-Management-System
+2. **Configurar el entorno:**
+   ```bash
+    python -m venv venv
+    source venv/bin/activate  # En Windows: venv\Scripts\activate
+    pip install -r requirements.txt
+3. **Base de Datos y Ejecución:**
+   ```bash
+   flask db upgrade
+   python app.py
 
-🚀 Instalación y Configuración
-1. Clonar el repositorio:
 
-git clone https://github.com/DariusK1ngg/Real-Estate-Management-System.git
-cd Real-Estate-Management-System
-
-2. Crear y activar un entorno virtual:
-python -m venv venv
-source venv/bin/activate  # En Windows: venv\Scripts\activate
-
-3. Instalar dependencias:
-pip install -r requirements.txt
-
-4. Configurar variables de entorno:
-Crea un archivo .env en la raíz con tus credenciales (asegúrate de no subirlas a GitHub).
-
-5. Ejecutar migraciones:
-flask db upgrade
-
-6. Iniciar el servidor:
-python app.py
-
-📄 Licencia
-Este proyecto está bajo la Licencia Dario Avalos.
+## By - Dario Avalos :)
