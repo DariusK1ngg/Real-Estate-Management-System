@@ -46,24 +46,23 @@ El proyecto está organizado en módulos independientes (**Blueprints**) para fa
    ```bash
    git clone [https://github.com/DariusK1ngg/Real-Estate-Management-System.git](https://github.com/DariusK1ngg/Real-Estate-Management-System.git)
    cd Real-Estate-Management-System
-Configurar el entorno virtual:
-
-Bash
-python -m venv venv
-source venv/bin/activate  # En Windows: venv\Scripts\activate
-Instalar dependencias:
-
-Bash
-pip install -r requirements.txt
-Variables de Entorno:
+2. **Configurar el entorno virtual:**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # En Windows: venv\Scripts\activate
+3. **Instalar dependencias:**
+   ```bash
+   pip install -r requirements.txt
+4. **Variables de Entorno:**
 Configura tu archivo .env basándote en los requerimientos del sistema para conectar con Oracle o SQLite.
+5. **Migrar Base de Datos e Iniciar:**
+   ```bash
+   flask db upgrade
+   python app.py
 
-Migrar Base de Datos e Iniciar:
+---
 
-Bash
-flask db upgrade
-python app.py
-📂 Estructura del Proyecto
+## 📂 Estructura del Proyecto
 Plaintext
 ├── routes/           # Lógica de cada módulo (Ventas, RRHH, etc.)
 ├── templates/        # Vistas organizadas por carpetas de módulo
@@ -71,11 +70,7 @@ Plaintext
 ├── models.py         # Definición de modelos de base de datos
 ├── extensions.py     # Configuración de extensiones (DB, Login, CSRF)
 └── utils.py          # Funciones auxiliares y decoradores
-👨‍💻 Perfil del Desarrollador
-Dario - Estudiante de 3er año de Ingeniería Informática.
 
-Institución: Universidad Católica "Nuestra Señora de la Asunción".
+---
 
-Especialización: Desarrollo de Software, Ciberseguridad y Automatización con Python.
-
-✨ Proyecto desarrollado con enfoque en la eficiencia operativa y seguridad de datos para el sector inmobiliario.
+## 👨‍💻 By - Dario Avalos
