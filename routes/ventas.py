@@ -109,6 +109,7 @@ def api_clientes_crud():
             return jsonify({"error": str(e)}), 500
     
     # GET Listado
+    # --- CAMBIAR ORDEN LISTA CLIENTES (Cliente.nombre.desc()) ---
     clientes = Cliente.query.filter_by(activo=True).order_by(Cliente.nombre).all()
     return jsonify([c.to_dict() for c in clientes])
 
@@ -195,6 +196,9 @@ def api_eliminar_servicio(sid):
 def api_ventas_general():
     # GET: Listar Historial
     if request.method == "GET":
+        # --- CAMBIAR ORDEN TABLA SERVICIOS CARGADOS ---
+        # .order_by(desc(Cuota.id)) = Descendente (Nuevos primero)
+        # .order_by(Cuota.id)       = Ascendente (Viejos primero)
         servicios_cargados = Cuota.query.filter_by(tipo='servicio').order_by(desc(Cuota.id)).limit(100).all()
         data = []
         for s in servicios_cargados:

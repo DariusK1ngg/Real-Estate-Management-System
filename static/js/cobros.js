@@ -1,9 +1,9 @@
-// static/js/cobros.js
+/* static/js/cobros.js */
 
 let clienteSeleccionadoId = null;
 let modalPago = null;
 let modalAbrirCaja = null;
-let cajaAbiertaGlobal = false; // NUEVA VARIABLE PARA CONTROLAR EL ESTADO
+let cajaAbiertaGlobal = false;
 
 document.addEventListener('DOMContentLoaded', function() {
     // --- Modales ---
@@ -95,13 +95,12 @@ async function checkCajaEstado() {
         const response = await fetch('/api/admin/caja/estado');
         const data = await response.json();
         
-        // Actualizamos variable global
         cajaAbiertaGlobal = data.caja_abierta;
 
         if (data.caja_abierta) {
             const saldoFormateado = (data.saldo_actual || 0).toLocaleString('es-PY');
             estadoCajaSpan.innerHTML = `ABIERTA: ${data.caja_descripcion} (Saldo: Gs. ${saldoFormateado})`;
-            estadoCajaSpan.className = 'badge bg-success'; // Bootstrap 5 usa bg-success
+            estadoCajaSpan.className = 'badge bg-success';
             btnAbrirCaja.style.display = 'none';
             btnCerrarCaja.style.display = 'inline-block';
         } else {
@@ -111,7 +110,6 @@ async function checkCajaEstado() {
             btnCerrarCaja.style.display = 'none';
         }
 
-        // --- NUEVO: Aplicar bloqueo visual y funcional a la sección de cuotas ---
         actualizarBloqueoInterfaz();
 
     } catch (error) {
@@ -121,29 +119,23 @@ async function checkCajaEstado() {
     }
 }
 
-// Función auxiliar para bloquear/desbloquear la UI
 function actualizarBloqueoInterfaz() {
-    const seccionCuotas = document.getElementById('seccion-cuotas'); // ID que añadiremos al HTML
+    const seccionCuotas = document.getElementById('seccion-cuotas');
     const alerta = document.getElementById('alertaCajaCerrada');
     
     if (!cajaAbiertaGlobal) {
-        // Bloquear
         if(seccionCuotas) {
             seccionCuotas.style.opacity = '0.5';
-            seccionCuotas.style.pointerEvents = 'none'; // Evita clicks en botones dentro
+            seccionCuotas.style.pointerEvents = 'none';
         }
         if(alerta) alerta.style.display = 'block';
-        
-        // Asegurar que los botones existentes se deshabiliten visualmente
         document.querySelectorAll('.btn-pagar-cuota').forEach(btn => btn.disabled = true);
     } else {
-        // Desbloquear
         if(seccionCuotas) {
             seccionCuotas.style.opacity = '1';
             seccionCuotas.style.pointerEvents = 'auto';
         }
         if(alerta) alerta.style.display = 'none';
-        
         document.querySelectorAll('.btn-pagar-cuota').forEach(btn => btn.disabled = false);
     }
 }
@@ -165,7 +157,6 @@ async function abrirCaja() {
         
         if (!response.ok) throw new Error(data.error || 'Error al abrir la caja');
         
-        // alert(data.message); // Opcional, a veces es mejor solo actualizar
         modalAbrirCaja.hide();
         checkCajaEstado();
     } catch (error) {
@@ -223,7 +214,6 @@ function seleccionarCliente(cliente) {
     cargarCuotasCliente(cliente.id);
 }
 
-// --- MODIFICADO: MUESTRA INTERÉS POR MORA Y GESTIONA BLOQUEO ---
 async function cargarCuotasCliente(clienteId) {
     const tbody = document.getElementById('tbodyCuotas');
     tbody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando cuotas...</td></tr>';
@@ -241,7 +231,6 @@ async function cargarCuotasCliente(clienteId) {
             const fechaFormateada = fechaVenc.toLocaleDateString('es-ES', { timeZone: 'UTC' });
             const montoFormateado = cuota.valor_cuota.toLocaleString('es-PY');
             
-            // --- Lógica Visual de Mora ---
             let infoInteres = '';
             let claseMonto = '';
             let btnClass = 'btn-success';
@@ -257,8 +246,6 @@ async function cargarCuotasCliente(clienteId) {
                 ? `<span class="badge bg-danger">${cuota.dias_atraso} días atraso</span>` 
                 : '<span class="badge bg-success">Al día</span>';
 
-            // --- LÓGICA DE BLOQUEO DE BOTÓN ---
-            // Si la caja está cerrada, el botón nace deshabilitado
             const disabledAttr = !cajaAbiertaGlobal ? 'disabled' : '';
 
             tr.innerHTML = `
@@ -279,7 +266,6 @@ async function cargarCuotasCliente(clienteId) {
             tbody.appendChild(tr);
         });
         
-        // Re-validar estado visual por seguridad
         actualizarBloqueoInterfaz();
 
     } catch (error) {
@@ -287,11 +273,9 @@ async function cargarCuotasCliente(clienteId) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error al cargar la información.</td></tr>';
     }
 }
-// --------------------------------------------
 
 // --- MANEJO DE MODAL Y REGISTRO DE PAGO ---
 function abrirModalPago(cuotaId, montoTotal) {
-    // Doble chequeo de seguridad
     if (!cajaAbiertaGlobal) {
         alert("Debe abrir la caja para realizar cobros.");
         return;
@@ -300,10 +284,11 @@ function abrirModalPago(cuotaId, montoTotal) {
     const form = document.getElementById('formPago');
     form.reset();
     document.getElementById('pago-cuota-id').value = cuotaId;
-    document.getElementById('pago-monto').value = montoTotal; 
+    
+    document.getElementById('pago-monto').value = new Intl.NumberFormat('es-PY').format(montoTotal); 
+    
     document.getElementById('pago-fecha').valueAsDate = new Date();
     
-    // Resetear visibilidad de cuenta bancaria
     document.getElementById('div-cuenta-destino').style.display = 'none';
     document.getElementById('selectCuentaDestino').required = false;
 
@@ -311,7 +296,6 @@ function abrirModalPago(cuotaId, montoTotal) {
 }
 
 async function registrarPago() {
-    // Triple chequeo de seguridad
     if (!cajaAbiertaGlobal) {
         alert("La caja está cerrada.");
         modalPago.hide();

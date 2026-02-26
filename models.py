@@ -152,6 +152,15 @@ class Lote(db.Model):
     __table_args__ = (
         db.UniqueConstraint('fraccionamiento_id', 'manzana', 'numero_lote', name='uq_lote_manzana_fracc'),
     )
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'numero_lote': self.numero_lote,
+            'manzana': self.manzana,
+            'precio_contado': float(self.precio) if self.precio else 0, # Ojo: en tu modelo se llama 'precio', no 'precio_contado'
+            'metros_cuadrados': self.metros_cuadrados,
+            'estado': self.estado
+        }
 
 class ListaPrecioLote(db.Model):
     __tablename__ = 'lista_precio_lote'

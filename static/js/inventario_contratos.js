@@ -1,5 +1,16 @@
 /* static/js/inventario_contratos.js */
 
+// Funciones auxiliares globales
+function formatMoney(amount) {
+    if (!amount) return '0';
+    return new Intl.NumberFormat('es-PY').format(amount);
+}
+
+function parseMoney(str) {
+    if (!str) return 0;
+    return parseFloat(str.toString().replace(/\./g, '').replace(',', '.'));
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Detectar pantalla
     if(document.getElementById('formContrato')) initCargaContrato();
@@ -25,7 +36,7 @@ function initCargaContrato() {
         }
     });
 
-    // --- NUEVO: BÚSQUEDA DE CLIENTES SIMPLE (SIN SELECT2) ---
+    // --- BÚSQUEDA DE CLIENTES SIMPLE (SIN SELECT2) ---
     const inputBuscador = document.getElementById('cliente_buscador');
     const inputHidden = document.getElementById('cliente_id');
     const listaResultados = document.getElementById('lista_resultados_clientes');
@@ -75,7 +86,6 @@ function initCargaContrato() {
             }
         });
     }
-    // -----------------------------------------------------
 
     // 1. Cargar Fraccionamientos (Inmuebles)
     fetch('/api/admin/fraccionamientos').then(r=>r.json()).then(data => {
@@ -217,9 +227,15 @@ window.generarCuotas = function() {
         let fecha = new Date(fechaInicio);
         fecha.setMonth(fecha.getMonth() + (i - 1));
         
+        // Formatear fecha
+        const dia = String(fecha.getDate()).padStart(2, '0');
+        const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+        const anio = fecha.getFullYear();
+        const fechaFmt = `${dia}/${mes}/${anio}`;
+
         const row = {
             numero: i,
-            vencimiento: fecha.toLocaleDateString('es-PY'),
+            vencimiento: fechaFmt,
             monto: formatMoney(valor)
         };
         
@@ -239,7 +255,7 @@ window.generarCuotas = function() {
 };
 
 // ==========================================
-// 2. CONSULTA Y EDICIÓN
+// 2. CONSULTA Y EDICIÓN (AQUÍ ESTÁ EL CAMBIO)
 // ==========================================
 let modalEditar = null;
 
@@ -248,26 +264,38 @@ async function cargarContratos() {
     const estado = document.getElementById('filtroEstado').value;
     const tbody = document.querySelector('#tablaContratos tbody');
     
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center">Cargando...</td></tr>';
+    // CAMBIO: Colspan ahora es 8 porque agregamos la columna de Fraccionamiento
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center">Cargando...</td></tr>';
     
     const res = await fetch(`/api/admin/contratos?q=${q}&estado=${estado}`);
     const data = await res.json();
     tbody.innerHTML = '';
     
     if(data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">Sin resultados</td></tr>'; return;
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center">Sin resultados</td></tr>'; return;
     }
 
     data.forEach(c => {
         const str = JSON.stringify(c).replace(/"/g, '&quot;');
         let badge = 'success';
         if(c.estado==='rescindido') badge='danger';
+        if(c.estado==='finalizado') badge='primary';
+        if(c.estado==='inactivo') badge='secondary';
         
+        // Formatear fecha si viene en formato ISO YYYY-MM-DD
+        let fechaMostrar = c.fecha_contrato;
+        if(c.fecha_contrato && c.fecha_contrato.includes('-')) {
+             const parts = c.fecha_contrato.split('-');
+             fechaMostrar = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
         tbody.innerHTML += `
             <tr>
                 <td><strong>${c.numero_contrato}</strong></td>
-                <td>${c.fecha_contrato}</td>
+                <td>${fechaMostrar}</td>
                 <td>${c.cliente_nombre}</td>
+                <!-- CAMBIO: AGREGADA COLUMNA FRACCIONAMIENTO -->
+                <td>${c.fraccionamiento || '-'}</td>
                 <td>${c.lote_info}</td>
                 <td class="text-end">Gs. ${formatMoney(c.valor_total)}</td>
                 <td><span class="badge bg-${badge}">${c.estado.toUpperCase()}</span></td>
@@ -300,7 +328,8 @@ window.guardarEdicion = async function() {
     if(data.estado === 'rescindido' && !confirm("¿RESCINDIR? Esto eliminará la deuda y liberará el lote.")) return;
 
     await fetch(`/api/admin/contratos/${id}`, {
-        method: 'PUT', headers: {'Content-Type': 'application/json'},
+        method: 'PATCH', 
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(data)
     });
     

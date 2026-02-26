@@ -76,18 +76,45 @@ function cargarLotes(url) {
         lotesLayer = L.geoJSON(fc, {
           style: feat => styleByEstado(feat.properties.estado),
           onEachFeature: (f, l) => {
-            // Popup detallado
+            const props = f.properties; 
+
+            // 1. Información Base (Siempre visible: Lote, Mz, Superficie, Estado)
             let content = `
-                <b>Manzana:</b> ${f.properties.manzana}<br>
-                <b>Lote:</b> ${f.properties.numero_lote}<br>
-                <b>Estado:</b> ${f.properties.estado}<br>
-                <b>Sup:</b> ${f.properties.metros_cuadrados} m²`;
-            
-            if (f.properties.precio) {
-                content += `<br><b>Precio:</b> Gs. ${f.properties.precio.toLocaleString('es-PY')}`;
+                <div style="font-size: 14px; line-height: 1.5;">
+                    <b>Manzana:</b> ${props.manzana}<br>
+                    <b>Lote:</b> ${props.numero_lote}<br>
+                    <b>Estado:</b> ${props.estado.toUpperCase()}<br>
+                    <b>Superficie:</b> ${props.metros_cuadrados} m²
+            `;
+
+            // 2. Lógica de Precios (SOLO SE MUESTRA SI NO ESTÁ VENDIDO)
+            if (props.estado !== 'vendido') {
+                
+                // A) Precio Contado (Se muestra siempre que exista)
+                if (props.precio && props.precio > 0) {
+                    content += `<br><b>Precio Contado:</b> Gs. ${props.precio.toLocaleString('es-PY')}`;
+                }
+
+                // B) Financiación 130 cuotas (Se agrega DEBAJO si existe)
+                if (props.precio_cuota_130 && props.precio_cuota_130 > 0) {
+                    content += `
+                        <div style="margin-top: 8px; padding: 8px; background-color: #e6fffa; border: 1px solid #38b2ac; border-radius: 5px; text-align: center;">
+                            <strong style="color: #234e52; display: block; margin-bottom: 2px;">¡FINANCIACIÓN PROPIA!</strong>
+                            <span style="font-size: 0.9em; color: #2c7a7b;">130 cuotas de:</span><br>
+                            <span style="font-size: 1.2em; font-weight: bold; color: #285e61;">
+                                Gs. ${props.precio_cuota_130.toLocaleString('es-PY')}
+                            </span>
+                        </div>
+                    `;
+                }
             }
+            // Si es 'vendido', el código salta aquí directamente y no muestra precios.
+
+            content += `</div>`; // Cerrar div principal
+
             l.bindPopup(content);
             
+            // Efectos visuales al pasar el mouse
             l.on('mouseover', function(){ this.setStyle({ weight: 3, fillOpacity: 0.4 }); });
             l.on('mouseout', function(){ this.setStyle({ weight: 2, fillOpacity: 0.25 }); });
           }
@@ -99,7 +126,7 @@ function cargarLotes(url) {
 // Carga inicial
 cargarLotes('/api/lotes');
 
-// EVENTO DE CAMBIO (Aquí estaba el problema)
+// EVENTO DE CAMBIO EN EL SELECT
 document.getElementById('sel-frac').addEventListener('change', e => {
   const fid = e.target.value;
 

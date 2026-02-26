@@ -31,7 +31,8 @@ Gestión de Inventario / Nuevo Contrato
                     <div class="row mb-2">
                         <div class="col-md-6">
                             <label class="fw-bold">Fraccionamiento / Inmueble:</label>
-                            <select id="selectFraccionamiento" class="form-select form-select-sm">
+                            <!-- CORRECCIÓN AQUÍ: Cambiado id="selectFraccionamiento" a id="fraccionamiento_id" -->
+                            <select id="fraccionamiento_id" class="form-select form-select-sm">
                                 <option value="">-- Filtrar por Fraccionamiento --</option>
                             </select>
                         </div>
@@ -131,7 +132,7 @@ Gestión de Inventario / Nuevo Contrato
 
                     <h6 class="text-primary">Documentación Entregada</h6>
                     <div class="row g-1 mb-3">
-                        <div class="col-md-6"><small>Modelo Contrato:</small>
+                        <div class="col-md-6"><small>Comprobante Interno:</small>
                             <select name="doc_modelo_contrato" class="form-select form-select-sm"><option>No entregado</option><option>Entregado</option></select>
                         </div>
                         <div class="col-md-6"><small>Doc. Identidad:</small>
@@ -192,5 +193,6 @@ Gestión de Inventario / Nuevo Contrato
 {% endblock %}
 
 {% block extra_js %}
+<!-- IMPORTANTE: El script debe cargarse aquí -->
 <script src="{{ url_for('static', filename='js/inventario_contrato_nuevo.js') }}"></script>
 {% endblock %}

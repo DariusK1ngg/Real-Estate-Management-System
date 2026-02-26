@@ -1,13 +1,20 @@
 /* Variables de colores */
 :root {
+    /* --- COLOR PRINCIPAL --- */
+    /* el color de la marca (Azul), toca este valor: */
     --primary: #2e7dff;
+    
     --secondary: #6c757d;
     --success: #28a745;
     --danger: #dc3545;
     --warning: #ffc107;
     --info: #17a2b8;
+    
+    /* --- COLORES DE FONDO Y TEXTO --- */
     --light: #f8f9fa;
     --dark: #343a40;
+    
+    /* --- ANCHO DEL MENU LATERAL --- */
     --sidebar-width: 280px;
     --topbar-height: 70px;
 }
@@ -20,6 +27,7 @@
 }
 
 body {
+    /* --- FUENTE PRINCIPAL --- */
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f5f7f9;
     color: #333;
@@ -33,6 +41,7 @@ body {
 /* Barra lateral */
 .sidebar {
     width: var(--sidebar-width);
+    /* --- COLOR DE FONDO DEL MENU (Gradient) --- */
     background: linear-gradient(135deg, #2c4b50, #1a2530);
     color: white;
     position: fixed;
@@ -58,6 +67,7 @@ body {
 .logo h2 {
     color: white;
     margin: 0;
+    /* --- TAMAÑO LETRA LOGO --- */
     font-size: 24px;
     transition: all 0.3s ease;
 }
@@ -68,6 +78,7 @@ body {
 
 .logo:hover h2 {
     transform: scale(1.05);
+    /* --- COLOR LOGO AL PASAR MOUSE --- */
     color: #2e7dff;
 }
 
@@ -188,6 +199,7 @@ body {
     color: white;
 }
 
+/* --- COLOR BOTON SALIR --- */
 .btn-logout {
     background-color: var(--danger);
     color: white;
@@ -270,6 +282,7 @@ body {
     text-align: center;
 }
 
+/* --- COLORES BOTONES --- */
 .btn-primary {
     background-color: var(--primary);
     color: white;
@@ -353,11 +366,7 @@ body {
 .estado-pagada { background-color: #d4edda; color: #155724; }
 .estado-vencida { background-color: #f8d7da; color: #721c24; }
 
-/* *** CORRECCIÓN AQUÍ: ***
-   Usamos :not(.fade) para que estos estilos SOLO se apliquen a tus modales personalizados
-   y NO a los modales de Bootstrap (que usan la clase .fade).
-   Esto evita que tu CSS sobrescriba el de Bootstrap y oscurezca la pantalla incorrectamente.
-*/
+
 .modal:not(.fade) {
     display: none; /* Por defecto oculto */
     position: fixed;
@@ -423,7 +432,9 @@ body {
 }
 
 :root {
-    --primary-color: #2e7dff;
+    /* Aquí se redefine el color primario como --primary-color */
+    /* Si cambias arriba, CAMBIA TAMBIÉN AQUÍ */
+    --primary-color: #2e7dff; 
     --sidebar-bg: #1a1c23;
     --sidebar-width: 260px;
 }
@@ -573,7 +584,6 @@ body {
 
 /* =================================================================
    ESTILOS GLOBALES DE VISIBILIDAD (TABLAS Y FORMULARIOS)
-   Aplicable a todos los módulos: Inventario, Ventas, Tesorería, etc.
    ================================================================= */
 
 /* 1. REGLA MAESTRA PARA TABLAS */

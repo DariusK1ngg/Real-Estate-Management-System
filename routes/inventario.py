@@ -4,7 +4,7 @@ from extensions import db
 from models import Fraccionamiento, Lote, Contrato, Cuota, Cliente, ListaPrecioLote, Funcionario
 from datetime import datetime, timedelta, date
 from utils import role_required, admin_required, get_param, clean, registrar_auditoria
-from sqlalchemy import or_, desc
+from sqlalchemy import or_, desc, func
 from dateutil.relativedelta import relativedelta
 from fpdf import FPDF
 from num2words import num2words
@@ -257,8 +257,11 @@ def api_contratos():
             if q:
                 search = f"%{q}%"
                 query = query.filter(or_(
-                    Cliente.nombre.ilike(search), Cliente.apellido.ilike(search),
-                    Cliente.documento.ilike(search), Contrato.numero_contrato.ilike(search),
+                    Cliente.nombre.ilike(search), 
+                    Cliente.apellido.ilike(search),
+                    func.concat(Cliente.nombre, ' ', Cliente.apellido).ilike(search),
+                    Cliente.documento.ilike(search), 
+                    Contrato.numero_contrato.ilike(search),
                     Lote.numero_lote.ilike(search)
                 ))
             
@@ -555,6 +558,9 @@ def api_lotes_disponibles_frac(fid):
     ).all()
     return jsonify([{"id": l.id, "texto": f"M{l.manzana} L{l.numero_lote} - Gs. {int(l.precio):,}", "precio": float(l.precio)} for l in lotes])
 
+# ==========================================
+# LÓGICA DE ACTUALIZACIÓN AUTOMÁTICA DE PRECIOS
+# ==========================================
 @bp.route("/api/admin/lotes/<int:lote_id>/precios", methods=["GET", "POST"])
 @login_required
 def api_lista_precios_lote(lote_id):
@@ -563,18 +569,36 @@ def api_lista_precios_lote(lote_id):
         return jsonify([p.to_dict() for p in precios])
     
     if request.method == "POST":
-        d = request.json
-        p = ListaPrecioLote(
-            lote_id=lote_id,
-            condicion_pago_id=d['condicion_pago_id'],
-            cantidad_cuotas=d['cantidad_cuotas'],
-            precio_cuota=d['precio_cuota'],
-            precio_total=d['precio_total']
-        )
-        db.session.add(p)
-        db.session.commit()
-        registrar_auditoria("CREAR", "ListaPrecioLote", f"Plan de pago agregado a lote ID {lote_id}")
-        return jsonify({"ok": True})
+        try:
+            d = request.json
+            p = ListaPrecioLote(
+                lote_id=lote_id,
+                condicion_pago_id=d['condicion_pago_id'],
+                cantidad_cuotas=d['cantidad_cuotas'],
+                precio_cuota=d['precio_cuota'],
+                precio_total=d['precio_total']
+            )
+            db.session.add(p)
+            
+            # --- AQUÍ ESTÁ LA CORRECCIÓN PRINCIPAL ---
+            lote = Lote.query.get(lote_id)
+            if lote:
+                # 1. Si es CONTADO (ID 1 o cuotas=1), actualizamos el precio base
+                if int(d.get('condicion_pago_id')) == 1 or int(d.get('cantidad_cuotas')) == 1:
+                    lote.precio = float(d['precio_total'])
+                    
+                # 2. Si es CRÉDITO 130 CUOTAS (o tiene 130 cuotas), actualizamos financiado
+                if int(d.get('cantidad_cuotas')) == 130:
+                    lote.precio_financiado_130 = float(d['precio_total'])
+                    lote.precio_cuota_130 = float(d['precio_cuota'])
+
+            db.session.commit()
+            registrar_auditoria("CREAR", "ListaPrecioLote", f"Plan de pago agregado a lote ID {lote_id}")
+            return jsonify({"ok": True})
+            
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 500
 
 @bp.route("/api/admin/lista-precios/<int:id>", methods=["DELETE"])
 @login_required
@@ -598,6 +622,7 @@ def buscar_clientes_simple():
         or_(
             Cliente.nombre.ilike(f'%{search}%'),
             Cliente.apellido.ilike(f'%{search}%'),
+            func.concat(Cliente.nombre, ' ', Cliente.apellido).ilike(f'%{search}%'),
             Cliente.documento.ilike(f'%{search}%')
         )
     ).limit(10).all()
@@ -612,3 +637,92 @@ def buscar_clientes_simple():
         })
     
     return jsonify(data)
+
+@bp.route("/api/search/fraccionamientos", methods=["GET"])
+@login_required
+def search_fraccionamientos():
+    """Busca fraccionamientos activos para el Select2"""
+    search = request.args.get('term', '') # Select2 envía lo que escribes en 'term'
+    
+    query = Fraccionamiento.query
+    
+    if search:
+        query = query.filter(Fraccionamiento.nombre.ilike(f'%{search}%'))
+    
+    # Ordenamos y limitamos resultados
+    fraccionamientos = query.order_by(Fraccionamiento.nombre).limit(20).all()
+    
+    return jsonify([{
+        "id": f.id,
+        "text": f.nombre
+    } for f in fraccionamientos])
+
+
+@bp.route("/api/admin/fraccionamientos/<int:fraccionamiento_id>/lotes-disponibles", methods=["GET"])
+@login_required
+def get_lotes_por_fraccionamiento(fraccionamiento_id):
+    """Devuelve lotes disponibles de un fraccionamiento específico"""
+    lotes = Lote.query.filter(
+        Lote.fraccionamiento_id == fraccionamiento_id,
+        Lote.estado.in_(['disponible', 'reservado']),
+        Lote.activo == True
+    ).order_by(Lote.manzana, Lote.numero_lote).all()
+    
+    resultado = []
+    for l in lotes:
+        precio_fmt = f"{int(l.precio):,}".replace(',', '.')
+        texto = f"Mz {l.manzana} - Lote {l.numero_lote} ({l.estado}) - Gs. {precio_fmt}"
+        
+        resultado.append({
+            "id": l.id,
+            "text": texto
+        })
+
+    return jsonify(resultado)
+
+# Ruta para obtener los precios/planes de pago de un lote
+@bp.route("/api/admin/lotes/<int:lote_id>/precios", methods=["GET"])
+@login_required
+def get_precios_lote(lote_id):
+    lote = Lote.query.get_or_404(lote_id)
+    return jsonify([])
+
+# Las dos rutas que había añadido antes para los dropdowns:
+@bp.route('/api/fraccionamientos/listar', methods=['GET'])
+@login_required
+def listar_fraccionamientos_api():
+    try:
+        # Obtenemos todos los fraccionamientos
+        fraccionamientos = Fraccionamiento.query.order_by(Fraccionamiento.nombre).all()
+        # Usamos to_dict() que ya tienes en tu modelo
+        return jsonify([f.to_dict() for f in fraccionamientos])
+    except Exception as e:
+        print(f"Error listando fraccionamientos: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/api/lotes/por_fraccionamiento/<int:fraccionamiento_id>', methods=['GET'])
+@login_required
+def listar_lotes_por_fraccionamiento_api(fraccionamiento_id):
+    try:
+        # Buscamos lotes DISPONIBLES y ACTIVOS de ese fraccionamiento
+        lotes = Lote.query.filter_by(
+            fraccionamiento_id=fraccionamiento_id, 
+            estado='disponible', 
+            activo=True
+        ).order_by(Lote.manzana, Lote.numero_lote).all()
+        
+        # Construimos la respuesta manualmente para asegurar que funcione
+        resultado = []
+        for l in lotes:
+            resultado.append({
+                'id': l.id,
+                'numero_lote': l.numero_lote,
+                'manzana': l.manzana,
+                'precio': float(l.precio) if l.precio else 0,
+                'estado': l.estado
+            })
+            
+        return jsonify(resultado)
+    except Exception as e:
+        print(f"Error listando lotes: {e}")
+        return jsonify({'error': str(e)}), 500
